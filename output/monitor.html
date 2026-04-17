@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ARIA // SYSTEM MONITOR</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void:#03040a;--panel:rgba(6,15,35,0.92);--cyan:#00f5ff;
+    --amber:#ffb300;--coral:#ff4757;--green:#2ed573;--purple:#a855f7;
+    --border:rgba(0,245,255,0.2);--text:#c8d6e5;--text-dim:rgba(200,214,229,0.5);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--void);color:var(--text);font-family:'Rajdhani',sans-serif;
+    min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,
+    rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:999;}
+
+  #app{max-width:1400px;margin:0 auto;padding:16px;display:grid;
+    grid-template-rows:64px 1fr 280px;gap:12px;min-height:100vh;}
+
+  header{display:flex;align-items:center;justify-content:space-between;
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:4px;padding:0 24px;backdrop-filter:blur(20px);}
+  .logo-text{font-family:'Orbitron',monospace;font-weight:900;font-size:20px;
+    color:var(--cyan);letter-spacing:6px;text-shadow:0 0 30px var(--cyan);}
+  .logo-sub{font-family:'Share Tech Mono',monospace;font-size:9px;
+    color:var(--text-dim);letter-spacing:3px;}
+  #clock{font-family:'Share Tech Mono',monospace;font-size:24px;
+    color:var(--cyan);text-shadow:0 0 20px var(--cyan);letter-spacing:4px;}
+
+  #pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+
+  .stage{background:var(--panel);border:1px solid var(--border);
+    border-radius:4px;padding:16px;backdrop-filter:blur(10px);
+    position:relative;overflow:hidden;transition:border-color .3s,box-shadow .3s;}
+  .stage.active{border-color:var(--cyan);
+    box-shadow:0 0 20px rgba(0,245,255,0.2),inset 0 0 20px rgba(0,245,255,0.04);}
+  .stage-top{height:2px;position:absolute;top:0;left:0;right:0;}
+  .stage.active .stage-top{background:var(--cyan);}
+
+  .stage-name{font-family:'Orbitron',monospace;font-size:10px;
+    letter-spacing:3px;color:var(--cyan);margin-bottom:8px;}
+  .stage-icon{font-size:28px;text-align:center;margin:8px 0;}
+  .metric{font-family:'Share Tech Mono',monospace;font-size:9px;
+    color:var(--text-dim);padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .metric span{color:var(--text);float:right;}
+
+  #replay-panel{background:var(--panel);border:1px solid var(--border);
+    border-radius:4px;backdrop-filter:blur(20px);display:grid;
+    grid-template-columns:1fr 1fr;gap:0;overflow:hidden;}
+  .replay-header{grid-column:1/-1;padding:10px 16px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:8px;background:rgba(0,245,255,0.03);}
+  .replay-title{font-family:'Orbitron',monospace;font-size:9px;
+    letter-spacing:3px;color:var(--cyan);}
+  .replay-dot{width:5px;height:5px;border-radius:50%;background:var(--coral);
+    box-shadow:0 0 6px var(--coral);animation:blink 1s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+  #reasoning-log{padding:12px 16px;border-right:1px solid var(--border);
+    overflow-y:auto;max-height:220px;}
+  #ghost-overlay{padding:12px 16px;display:flex;flex-direction:column;
+    justify-content:center;align-items:center;}
+  .ghost-card{background:rgba(15,23,42,0.95);border:1px solid rgba(99,102,241,.5);
+    border-radius:8px;padding:12px 16px;max-width:260px;width:100%;
+    box-shadow:0 0 20px rgba(99,102,241,0.2);}
+  .ghost-msg{font-size:13px;color:#e2e8f0;margin-bottom:4px;}
+  .ghost-why{font-size:10px;color:#94a3b8;margin-bottom:8px;}
+  .ghost-btn{background:#1e40af;color:white;border:none;border-radius:4px;
+    padding:4px 12px;font-size:10px;cursor:pointer;font-family:'Rajdhani',sans-serif;}
+
+  .reasoning-entry{font-family:'Share Tech Mono',monospace;font-size:9px;
+    padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .r-gen{color:var(--green);}
+  .r-critic{color:var(--amber);}
+  .r-final-yes{color:var(--cyan);}
+  .r-final-no{color:var(--text-dim);}
+  .r-ts{color:var(--text-dim);font-size:8px;}
+  .r-suppressed{text-decoration:line-through;opacity:0.5;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <div class="logo-text">ARIA</div>
+      <div class="logo-sub">system monitor // live pipeline</div>
+    </div>
+    <div id="clock">--:--:--</div>
+    <a href="../build/dashboard/index.html" style="font-family:'Orbitron',monospace;font-size:9px;
+      letter-spacing:2px;color:var(--cyan);text-decoration:none;border:1px solid var(--border);
+      padding:6px 12px;border-radius:3px;">← BUILD MODE</a>
+  </header>
+
+  <div id="pipeline">
+    <div class="stage" id="stage-capture">
+      <div class="stage-top"></div>
+      <div class="stage-name">CAPTURE</div>
+      <div class="stage-icon">👁️</div>
+      <div class="metric">VAD <span id="m-vad">--</span></div>
+      <div class="metric">Screen diff <span id="m-diff">--</span></div>
+      <div class="metric">OCR loaded <span id="m-ocr">--</span></div>
+    </div>
+
+    <div class="stage" id="stage-process">
+      <div class="stage-top"></div>
+      <div class="stage-name">PROCESS</div>
+      <div class="stage-icon">⚙️</div>
+      <div class="metric">OCR idle in <span id="m-ocr-idle">--</span></div>
+      <div class="metric">Whisper loaded <span id="m-whisper">--</span></div>
+      <div class="metric">Last text <span id="m-text">--</span></div>
+    </div>
+
+    <div class="stage" id="stage-memory">
+      <div class="stage-top"></div>
+      <div class="stage-name">MEMORY</div>
+      <div class="stage-icon">🧠</div>
+      <div class="metric">ChromaDB docs <span id="m-chroma">--</span></div>
+      <div class="metric">KG nodes <span id="m-kg">--</span></div>
+      <div class="metric">Tasks <span id="m-tasks">--</span></div>
+      <div class="metric">Commitments <span id="m-commits">--</span></div>
+    </div>
+
+    <div class="stage" id="stage-decide">
+      <div class="stage-top"></div>
+      <div class="stage-name">DECIDE</div>
+      <div class="stage-icon">⚖️</div>
+      <div class="metric">Interval <span id="m-interval">--</span></div>
+      <div class="metric">Generator <span id="m-gen">--</span></div>
+      <div class="metric">Critic <span id="m-critic">--</span></div>
+      <div class="metric">Calibrator conf <span id="m-cal">--</span></div>
+    </div>
+
+    <div class="stage" id="stage-output">
+      <div class="stage-top"></div>
+      <div class="stage-name">OUTPUT</div>
+      <div class="stage-icon">📢</div>
+      <div class="metric">Overlay <span id="m-overlay">--</span></div>
+      <div class="metric">TTS <span id="m-tts">--</span></div>
+      <div class="metric">Last message <span id="m-lastmsg">--</span></div>
+    </div>
+  </div>
+
+  <div id="replay-panel">
+    <div class="replay-header">
+      <div class="replay-dot"></div>
+      <div class="replay-title">Interrupt Replay — Generator + Critic Reasoning Chain</div>
+    </div>
+    <div id="reasoning-log"></div>
+    <div id="ghost-overlay">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;
+        color:var(--text-dim);letter-spacing:2px;margin-bottom:12px;">LAST INTERRUPT PREVIEW</div>
+      <div class="ghost-card" id="ghost-card" style="opacity:0.4;">
+        <div class="ghost-msg" id="ghost-msg">Waiting for interrupt...</div>
+        <div class="ghost-why" id="ghost-why">Why: --</div>
+        <button class="ghost-btn">Got it</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function fetchMonitor() {
+  try {
+    const r = await fetch('/monitor.json?_=' + Date.now());
+    if (r.ok) return await r.json();
+  } catch {}
+  return null;
+}
+
+function set(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function updateUI(data) {
+  if (!data) return;
+  const { capture, process: proc, memory, decide, output, interrupt_replays } = data;
+
+  if (capture) {
+    set('m-vad', capture.vad || '--');
+    set('m-diff', capture.diff_pct != null ? (capture.diff_pct * 100).toFixed(1) + '%' : '--');
+    set('m-ocr', capture.ocr_loaded ? 'YES' : 'idle');
+    document.getElementById('stage-capture').className =
+      'stage ' + (capture.vad === 'speech' ? 'active' : '');
+  }
+
+  if (proc) {
+    set('m-ocr-idle', proc.ocr_idle_countdown != null ? proc.ocr_idle_countdown + 's' : '--');
+    set('m-whisper', proc.whisper_loaded ? 'YES' : 'idle');
+    set('m-text', proc.last_text ? proc.last_text.substring(0,12) + '\u2026' : '--');
+    document.getElementById('stage-process').className =
+      'stage ' + (proc.ocr_idle_countdown > 0 ? 'active' : '');
+  }
+
+  if (memory) {
+    set('m-chroma', memory.chroma_docs ?? '--');
+    set('m-kg', memory.kg_nodes ?? '--');
+    set('m-tasks', memory.tasks ?? '--');
+    set('m-commits', memory.commitments ?? '--');
+    document.getElementById('stage-memory').className = 'stage active';
+  }
+
+  if (decide) {
+    set('m-interval', decide.interval != null ? decide.interval + 's' : '--');
+    set('m-gen', decide.generator ? 'YES' : 'no');
+    set('m-critic', decide.critic_suppress ? 'SUPPRESS' : 'allow');
+    set('m-cal', decide.calibrator_conf != null ? (decide.calibrator_conf * 100).toFixed(0) + '%' : '--');
+    document.getElementById('stage-decide').className =
+      'stage ' + (decide.final_say ? 'active' : '');
+  }
+
+  if (output) {
+    set('m-overlay', output.overlay_visible ? 'VISIBLE' : 'hidden');
+    set('m-tts', output.tts_state || '--');
+    set('m-lastmsg', output.last_message ? output.last_message.substring(0,16) + '\u2026' : '--');
+    document.getElementById('stage-output').className =
+      'stage ' + (output.overlay_visible ? 'active' : '');
+  }
+
+  if (interrupt_replays && interrupt_replays.length > 0) {
+    const log = document.getElementById('reasoning-log');
+    log.innerHTML = '';
+    [...interrupt_replays].reverse().forEach(r => {
+      const ts = new Date(r.timestamp * 1000).toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'reasoning-entry' + (r.suppressed ? ' r-suppressed' : '');
+      div.innerHTML =
+        '<div class="r-ts">' + ts + '</div>' +
+        '<div class="r-gen">Generator: ' + r.generator + '</div>' +
+        '<div class="r-critic">Critic: ' + r.critic + '</div>' +
+        '<div class="' + (r.suppressed ? 'r-final-no' : 'r-final-yes') + '">' +
+        'Final: ' + (r.suppressed ? 'SUPPRESSED' : 'INTERRUPTED \u2014 ' + r.message) + '</div>';
+      log.appendChild(div);
+    });
+
+    const last = [...interrupt_replays].reverse().find(r => !r.suppressed);
+    if (last) {
+      document.getElementById('ghost-card').style.opacity = '1';
+      document.getElementById('ghost-msg').textContent = last.message;
+      document.getElementById('ghost-why').textContent = 'Why: ' + last.generator;
+    }
+  }
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    [now.getHours(), now.getMinutes(), now.getSeconds()]
+      .map(n => String(n).padStart(2,'0')).join(':');
+}
+
+setInterval(updateClock, 1000);
+setInterval(async () => { updateUI(await fetchMonitor()); }, 1000);
+updateClock();
+fetchMonitor().then(updateUI);
+</script>
+</body>
+</html>

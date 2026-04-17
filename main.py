@@ -26,6 +26,7 @@ from decide.energy import EnergyScheduler
 from decide.calibrator import InterruptCalibrator
 from output.overlay import Overlay
 from output.tts import TTS
+from output import monitor_writer
 from hotkey import HotkeyListener
 
 
@@ -107,11 +108,23 @@ class ARIAPipeline:
         screenshot = event.data["screenshot"]
         window_title = event.data.get("window_title", "")
         text = self._ocr.extract(screenshot)
+        monitor_writer.update_capture(vad="silence", diff_pct=0.0, ocr_loaded=True)
+        monitor_writer.update_process(
+            ocr_idle_countdown=self._ocr._timer._timeout - (time.monotonic() - self._ocr._timer._last_reset),
+            whisper_loaded=self._stt._model is not None,
+            last_text_preview=text[:80],
+        )
         if not text.strip():
             return
         scene = self._scene_parser.parse(window_title, text)
         self._episodic.add_chunk(text, source="screen")
         self._vector.add(text)
+        monitor_writer.update_memory(
+            chroma_docs=self._vector._collection.count(),
+            kg_nodes=len(self._kg._nodes),
+            tasks=len(self._structured.get_tasks()),
+            commitments=len(self._structured.get_commitments()),
+        )
 
         now = time.monotonic()
         interval = self._energy.next_interval()
@@ -121,6 +134,14 @@ class ARIAPipeline:
 
         recent = self._episodic.get_recent(seconds=120)
         result = self._decision_agent.evaluate({"recent": recent, "scene": scene})
+        monitor_writer.update_decide(
+            interval=self._energy.next_interval(),
+            generator_verdict=result is not None,
+            critic_verdict=False,
+            final_say=result is not None,
+            calibrator_conf=0.0,
+            reason=result["reason"] if result else "no interrupt",
+        )
         if result:
             await self._interrupt(result)
 
@@ -150,6 +171,11 @@ class ARIAPipeline:
                 importance="high" if result["importance"] > 0.7 else "low",
                 reason=result["reason"],
             )
+        monitor_writer.update_output(
+            overlay_visible=True,
+            tts_state="speaking",
+            last_message=result["message"],
+        )
         loop = asyncio.get_event_loop()
         loop.run_in_executor(None, self._tts.speak, result["message"])
 
