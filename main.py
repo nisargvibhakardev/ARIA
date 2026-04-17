@@ -155,21 +155,21 @@ class ARIAPipeline:
         self._vector.add(text)
 
     async def _handle_hotkey(self) -> None:
+        if self._overlay:
+            self._overlay.show_thinking()
         recent = self._episodic.get_recent(seconds=120)
         result = self._decision_agent.evaluate({"recent": recent, "scene": None})
         if result:
             await self._interrupt(result)
         elif self._overlay:
-            self._overlay.show_message(
-                "Nothing urgent right now.", importance="low", reason="Hotkey query"
-            )
+            self._overlay.show_message("Nothing urgent right now.", "low", "Hotkey query")
 
     async def _interrupt(self, result: dict) -> None:
         if self._overlay:
             self._overlay.show_message(
                 result["message"],
-                importance="high" if result["importance"] > 0.7 else "low",
-                reason=result["reason"],
+                "high" if result["importance"] > 0.7 else "low",
+                result["reason"],
             )
         monitor_writer.update_output(
             overlay_visible=True,

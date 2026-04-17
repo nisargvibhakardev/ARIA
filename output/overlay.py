@@ -4,12 +4,13 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QApplication
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QFont
 from config import OverlayConfig
 
 
 class Overlay(QWidget):
     dismissed = pyqtSignal()
+    _show_thinking_signal = pyqtSignal()
+    _show_message_signal = pyqtSignal(str, str, str)
 
     def __init__(
         self,
@@ -22,6 +23,8 @@ class Overlay(QWidget):
         self._auto_timer = QTimer(self)
         self._auto_timer.setSingleShot(True)
         self._auto_timer.timeout.connect(self.hide_message)
+        self._show_thinking_signal.connect(self._show_thinking_slot)
+        self._show_message_signal.connect(self._show_message_slot)
         self._setup_ui()
         self.hide()
 
@@ -71,7 +74,23 @@ class Overlay(QWidget):
         geo = screen.availableGeometry()
         self.move(geo.right() - self.width() - 20, geo.bottom() - 200)
 
+    def show_thinking(self) -> None:
+        """Thread-safe — shows ⏳ immediately while LLM is working."""
+        self._show_thinking_signal.emit()
+
     def show_message(self, message: str, importance: str, reason: str) -> None:
+        """Thread-safe — replaces thinking state with real response."""
+        self._show_message_signal.emit(message, importance, reason)
+
+    def _show_thinking_slot(self) -> None:
+        self._auto_timer.stop()
+        self._msg_label.setText("⏳  Thinking...")
+        self._reason_label.setText("")
+        self._got_it_btn.setVisible(False)
+        self.adjustSize()
+        self.show()
+
+    def _show_message_slot(self, message: str, importance: str, reason: str) -> None:
         self._msg_label.setText(message)
         self._reason_label.setText(f"Why: {reason}")
         self._got_it_btn.setVisible(importance == "high")
