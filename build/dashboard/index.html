@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARIA // CONSTRUCT CONTROL</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #03040a;
+    --deep: #060b18;
+    --panel: rgba(6,15,35,0.85);
+    --cyan: #00f5ff;
+    --cyan-dim: rgba(0,245,255,0.15);
+    --amber: #ffb300;
+    --coral: #ff4757;
+    --green: #2ed573;
+    --purple: #a855f7;
+    --border: rgba(0,245,255,0.2);
+    --glow: 0 0 20px rgba(0,245,255,0.4);
+    --text: #c8d6e5;
+    --text-dim: rgba(200,214,229,0.5);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--void);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+  }
+
+  /* STARFIELD */
+  #stars {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle var(--d) ease-in-out infinite alternate;
+  }
+  @keyframes twinkle {
+    from { opacity: 0.1; transform: scale(1); }
+    to { opacity: 0.9; transform: scale(1.5); }
+  }
+
+  /* SCANLINE OVERLAY */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* GRID LINES */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* MAIN LAYOUT */
+  #app {
+    position: relative;
+    z-index: 10;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 72px 1fr 180px;
+    grid-template-columns: 1fr 320px;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  /* ===== HEADER ===== */
+  #header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0 24px;
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+  }
+  #header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    animation: scanH 3s linear infinite;
+  }
+  @keyframes scanH {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .logo-mark {
+    width: 40px; height: 40px;
+    border: 2px solid var(--cyan);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    animation: spin-slow 8s linear infinite;
+  }
+  .logo-mark::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px dashed rgba(0,245,255,0.4);
+    border-radius: 50%;
+    animation: spin-slow 4s linear infinite reverse;
+  }
+  .logo-mark::after {
+    content: '◈';
+    color: var(--cyan);
+    font-size: 14px;
+    animation: spin-slow 8s linear infinite reverse;
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .logo-text {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 22px;
+    color: var(--cyan);
+    letter-spacing: 6px;
+    text-shadow: 0 0 30px var(--cyan);
+  }
+  .logo-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+  }
+
+  .header-center {
+    text-align: center;
+  }
+  .mission-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--amber);
+    text-transform: uppercase;
+  }
+  #mission-clock {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 28px;
+    color: var(--cyan);
+    text-shadow: var(--glow);
+    letter-spacing: 4px;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 24px;
+  }
+  .stat-pill {
+    text-align: center;
+  }
+  .stat-pill .val {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .stat-pill .lbl {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .val.green { color: var(--green); text-shadow: 0 0 15px var(--green); }
+  .val.amber { color: var(--amber); text-shadow: 0 0 15px var(--amber); }
+  .val.coral { color: var(--coral); text-shadow: 0 0 15px var(--coral); }
+  .val.cyan  { color: var(--cyan);  text-shadow: 0 0 15px var(--cyan); }
+
+  /* ===== CONSTELLATION (main area) ===== */
+  #constellation {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+
+  /* SVG connections */
+  #connections-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* AGENT NODES */
+  .agent-node {
+    position: absolute;
+    width: 160px;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform 0.3s;
+  }
+  .agent-node:hover { transform: translate(-50%, -50%) scale(1.05); z-index: 100; }
+
+  .agent-card {
+    background: rgba(6,15,35,0.95);
+    border: 1px solid rgba(0,245,255,0.25);
+    border-radius: 6px;
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 6px 6px 0 0;
+  }
+  .agent-card.active {
+    border-color: var(--cyan);
+    box-shadow: 0 0 20px rgba(0,245,255,0.25), inset 0 0 20px rgba(0,245,255,0.05);
+  }
+  .agent-card.active::before { background: var(--cyan); }
+  .agent-card.reviewing {
+    border-color: var(--amber);
+    box-shadow: 0 0 20px rgba(255,179,0,0.25), inset 0 0 20px rgba(255,179,0,0.05);
+  }
+  .agent-card.reviewing::before { background: var(--amber); }
+  .agent-card.testing {
+    border-color: var(--purple);
+    box-shadow: 0 0 20px rgba(168,85,247,0.25), inset 0 0 20px rgba(168,85,247,0.05);
+  }
+  .agent-card.testing::before { background: var(--purple); }
+  .agent-card.leading {
+    border-color: var(--coral);
+    box-shadow: 0 0 30px rgba(255,71,87,0.3), inset 0 0 30px rgba(255,71,87,0.08);
+  }
+  .agent-card.leading::before { background: linear-gradient(90deg, var(--coral), var(--amber)); }
+  .agent-card.idle {
+    border-color: rgba(0,245,255,0.1);
+    box-shadow: none;
+  }
+  .agent-card.idle::before { background: rgba(200,214,229,0.2); }
+
+  .agent-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin: 0 auto 8px;
+    position: relative;
+  }
+  .agent-avatar::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+    opacity: 0.4;
+    animation: pulse-ring 2s ease-in-out infinite;
+  }
+  @keyframes pulse-ring {
+    0%, 100% { transform: scale(1); opacity: 0.4; }
+    50% { transform: scale(1.15); opacity: 0.1; }
+  }
+
+  .agent-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 2px;
+    margin-bottom: 2px;
+  }
+  .agent-role {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    text-align: center;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .agent-status {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    text-align: center;
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-height: 22px;
+  }
+  .agent-progress {
+    margin-top: 6px;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .agent-progress-bar {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 0.5s ease;
+  }
+
+  /* STATUS DOT */
+  .status-dot {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+  }
+  .status-dot.active  { background: var(--cyan);  box-shadow: 0 0 8px var(--cyan);  animation: blink 1s ease-in-out infinite; }
+  .status-dot.leading { background: var(--coral); box-shadow: 0 0 8px var(--coral); animation: blink 0.7s ease-in-out infinite; }
+  .status-dot.reviewing { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: blink 1.2s ease-in-out infinite; }
+  .status-dot.testing { background: var(--purple); box-shadow: 0 0 8px var(--purple); animation: blink 0.9s ease-in-out infinite; }
+  .status-dot.idle    { background: rgba(200,214,229,0.3); }
+  @keyframes blink {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+  }
+
+  /* TASK ORBS (floating animated) */
+  .task-orb {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  /* CENTER NODE — NEXUS */
+  #nexus-ring {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 90px; height: 90px;
+    pointer-events: none;
+  }
+  .nexus-ring-outer {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255,71,87,0.3);
+    animation: spin-slow 12s linear infinite;
+  }
+  .nexus-ring-mid {
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    border: 1px dashed rgba(255,71,87,0.2);
+    animation: spin-slow 8s linear infinite reverse;
+  }
+  .nexus-glow {
+    position: absolute;
+    inset: 15px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,71,87,0.15) 0%, transparent 70%);
+  }
+
+  /* ===== RIGHT PANEL ===== */
+  #right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .panel-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    backdrop-filter: blur(20px);
+    overflow: hidden;
+    flex: 1;
+  }
+  .panel-header {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,245,255,0.03);
+  }
+  .panel-header-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-transform: uppercase;
+  }
+  .panel-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+  .panel-content {
+    padding: 10px 14px;
+    height: calc(100% - 38px);
+    overflow-y: auto;
+  }
+  .panel-content::-webkit-scrollbar { width: 3px; }
+  .panel-content::-webkit-scrollbar-track { background: transparent; }
+  .panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* TASK QUEUE */
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .task-badge {
+    padding: 2px 5px;
+    border-radius: 2px;
+    font-size: 8px;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .task-badge.build { background: rgba(0,245,255,0.15); color: var(--cyan); border: 1px solid rgba(0,245,255,0.3); }
+  .task-badge.review { background: rgba(255,179,0,0.15); color: var(--amber); border: 1px solid rgba(255,179,0,0.3); }
+  .task-badge.test { background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+  .task-badge.done { background: rgba(46,213,115,0.15); color: var(--green); border: 1px solid rgba(46,213,115,0.3); }
+  .task-name { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-agent { color: var(--text-dim); font-size: 9px; flex-shrink: 0; }
+
+  /* ACTIVITY LOG */
+  .log-entry {
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    line-height: 1.5;
+    animation: slideIn 0.2s ease;
+  }
+  .log-ts { color: var(--text-dim); margin-right: 6px; }
+  .log-agent { margin-right: 4px; font-weight: bold; }
+  .log-agent.nexus   { color: var(--coral); }
+  .log-agent.phantom { color: var(--cyan); }
+  .log-agent.mnemon  { color: #60a5fa; }
+  .log-agent.oracle  { color: var(--amber); }
+  .log-agent.echo    { color: var(--green); }
+  .log-agent.cipher  { color: var(--amber); }
+  .log-agent.sigma   { color: var(--purple); }
+  .log-msg { color: var(--text); }
+
+  /* ===== BOTTOM BAR ===== */
+  #bottom-bar {
+    grid-column: 1 / -1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    backdrop-filter: blur(20px);
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    overflow: hidden;
+  }
+
+  .bottom-agent-strip {
+    padding: 10px 12px;
+    border-right: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .bottom-agent-strip:last-child { border-right: none; }
+  .bottom-agent-strip.active-strip { background: rgba(0,245,255,0.04); }
+  .bottom-agent-strip.leading-strip { background: rgba(255,71,87,0.04); }
+  .bottom-agent-strip.reviewing-strip { background: rgba(255,179,0,0.04); }
+  .bottom-agent-strip.testing-strip { background: rgba(168,85,247,0.04); }
+
+  .strip-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 8px;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .strip-task {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 5px;
+  }
+  .strip-bar {
+    height: 2px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .strip-fill {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 0.8s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .strip-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -50%;
+    width: 50%; height: 100%;
+    background: rgba(255,255,255,0.4);
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    from { left: -50%; }
+    to { left: 150%; }
+  }
+
+  /* CPU MINI GRAPH */
+  .mini-graph {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5px;
+    height: 20px;
+    margin-top: 4px;
+  }
+  .mini-bar {
+    flex: 1;
+    border-radius: 1px 1px 0 0;
+    min-height: 2px;
+    transition: height 0.5s ease;
+  }
+</style>
+</head>
+<body>
+
+<div id="stars"></div>
+
+<div id="app">
+  <!-- HEADER -->
+  <header id="header">
+    <div class="logo">
+      <div class="logo-mark"></div>
+      <div>
+        <div class="logo-text">ARIA</div>
+        <div class="logo-sub">construct control // build session active</div>
+      </div>
+    </div>
+    <div class="header-center">
+      <div class="mission-name">⬡ operation: genesis ⬡</div>
+      <div id="mission-clock">00:00:00</div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill">
+        <div class="val green" id="stat-complete">0</div>
+        <div class="lbl">Complete</div>
+      </div>
+      <div class="stat-pill">
+        <div class="val cyan" id="stat-active">4</div>
+        <div class="lbl">Active</div>
+      </div>
+      <div class="stat-pill">
+        <div class="val amber" id="stat-review">1</div>
+        <div class="lbl">Review</div>
+      </div>
+      <div class="stat-pill">
+        <div class="val coral" id="stat-errors">0</div>
+        <div class="lbl">Errors</div>
+      </div>
+    </div>
+    <button id="mode-toggle" onclick="toggleMode()" style="
+  font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;
+  background:rgba(0,245,255,0.1);border:1px solid rgba(0,245,255,0.3);
+  color:var(--cyan);padding:6px 12px;border-radius:3px;cursor:pointer;
+  margin-left:16px;
+">ARIA MONITOR →</button>
+  </header>
+
+  <!-- CONSTELLATION -->
+  <div id="constellation">
+    <svg id="connections-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+    <!-- NEXUS RINGS (center decoration) -->
+    <div id="nexus-ring">
+      <div class="nexus-ring-outer"></div>
+      <div class="nexus-ring-mid"></div>
+      <div class="nexus-glow"></div>
+    </div>
+
+    <!-- AGENT NODES — positioned by JS -->
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div id="right-panel">
+    <div class="panel-box" style="flex:1.2">
+      <div class="panel-header">
+        <div class="panel-dot"></div>
+        <div class="panel-header-title">Task Queue</div>
+      </div>
+      <div class="panel-content" id="task-queue"></div>
+    </div>
+    <div class="panel-box" style="flex:1.8">
+      <div class="panel-header">
+        <div class="panel-dot" style="background:var(--green);box-shadow:0 0 6px var(--green)"></div>
+        <div class="panel-header-title">Live Feed</div>
+      </div>
+      <div class="panel-content" id="activity-log"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div id="bottom-bar"></div>
+</div>
+
+<script>
+// ===================== STARFIELD =====================
+(function() {
+  const el = document.getElementById('stars');
+  for (let i = 0; i < 120; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 0.5;
+    s.style.cssText = `
+      left:${Math.random()*100}%;top:${Math.random()*100}%;
+      width:${size}px;height:${size}px;
+      --d:${2+Math.random()*4}s;
+      animation-delay:${Math.random()*4}s;
+    `;
+    el.appendChild(s);
+  }
+})();
+
+// ===================== AGENTS =====================
+const AGENTS = [
+  {
+    id: 'nexus',
+    name: 'NEXUS',
+    role: 'Team Lead // Orchestrator',
+    emoji: '🎯',
+    state: 'leading',
+    color: 'var(--coral)',
+    fill: '#ff4757',
+    task: 'Coordinating pipeline build',
+    progress: 68,
+    cpu: [40,55,70,65,80,75,90,85,70,68],
+    posAngle: null, // center
+    description: 'The conductor. Never writes code. Always right anyway.',
+  },
+  {
+    id: 'phantom',
+    name: 'PHANTOM',
+    role: 'Capture Agent',
+    emoji: '👁️',
+    state: 'active',
+    color: 'var(--cyan)',
+    fill: '#00f5ff',
+    task: 'Building screen.py + mic.py',
+    progress: 82,
+    cpu: [20,30,45,60,55,70,65,80,75,82],
+    posAngle: 270,
+  },
+  {
+    id: 'mnemon',
+    name: 'MNEMON',
+    role: 'Memory Agent',
+    emoji: '🧠',
+    state: 'active',
+    color: '#60a5fa',
+    fill: '#60a5fa',
+    task: 'Implementing ChromaDB + Ebbinghaus',
+    progress: 51,
+    cpu: [10,15,30,45,50,48,55,52,48,51],
+    posAngle: 330,
+  },
+  {
+    id: 'oracle',
+    name: 'ORACLE',
+    role: 'Decide Agent',
+    emoji: '⚖️',
+    state: 'idle',
+    color: 'var(--amber)',
+    fill: '#ffb300',
+    task: 'Waiting for memory module...',
+    progress: 12,
+    cpu: [5,5,8,5,10,8,12,8,10,12],
+    posAngle: 30,
+  },
+  {
+    id: 'echo',
+    name: 'ECHO',
+    role: 'Output Agent',
+    emoji: '📢',
+    state: 'active',
+    color: 'var(--green)',
+    fill: '#2ed573',
+    task: 'Building PyQt6 HUD overlay',
+    progress: 44,
+    cpu: [15,20,35,40,38,44,42,48,45,44],
+    posAngle: 90,
+  },
+  {
+    id: 'cipher',
+    name: 'CIPHER',
+    role: 'Reviewer',
+    emoji: '🔍',
+    state: 'reviewing',
+    color: 'var(--amber)',
+    fill: '#ffb300',
+    task: 'Reviewing capture module PR',
+    progress: 35,
+    cpu: [30,40,35,45,38,42,35,40,38,35],
+    posAngle: 150,
+  },
+  {
+    id: 'sigma',
+    name: 'SIGMA',
+    role: 'Tester',
+    emoji: '⚗️',
+    state: 'testing',
+    color: 'var(--purple)',
+    fill: '#a855f7',
+    task: 'Writing pytest suite for screen.py',
+    progress: 29,
+    cpu: [5,10,20,25,22,28,25,30,28,29],
+    posAngle: 210,
+  },
+];
+
+// ===================== LAYOUT =====================
+function positionAgents() {
+  const container = document.getElementById('constellation');
+  const rect = container.getBoundingClientRect();
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  const R = Math.min(rect.width, rect.height) * 0.32;
+
+  AGENTS.forEach(agent => {
+    const existing = document.getElementById('node-' + agent.id);
+    if (existing) existing.remove();
+
+    const node = document.createElement('div');
+    node.className = 'agent-node';
+    node.id = 'node-' + agent.id;
+
+    let x, y;
+    if (agent.posAngle === null) {
+      x = cx; y = cy;
+    } else {
+      const rad = (agent.posAngle - 90) * Math.PI / 180;
+      x = cx + R * Math.cos(rad);
+      y = cy + R * Math.sin(rad);
+    }
+
+    node.style.left = x + 'px';
+    node.style.top  = y + 'px';
+    node.dataset.x = x;
+    node.dataset.y = y;
+
+    const progressColor = agent.state === 'leading' ? '#ff4757'
+      : agent.state === 'reviewing' ? '#ffb300'
+      : agent.state === 'testing'   ? '#a855f7'
+      : agent.state === 'idle'      ? 'rgba(200,214,229,0.2)'
+      : '#00f5ff';
+
+    node.innerHTML = `
+      <div class="agent-card ${agent.state}">
+        <div class="status-dot ${agent.state}"></div>
+        <div class="agent-avatar" style="background:${agent.fill}22;color:${agent.fill}">${agent.emoji}</div>
+        <div class="agent-name" style="color:${agent.fill}">${agent.name}</div>
+        <div class="agent-role">${agent.role}</div>
+        <div class="agent-status" id="status-${agent.id}">${agent.task}</div>
+        <div class="agent-progress">
+          <div class="agent-progress-bar" id="prog-${agent.id}" style="width:${agent.progress}%;background:${progressColor}"></div>
+        </div>
+      </div>`;
+
+    container.appendChild(node);
+  });
+
+  drawConnections(cx, cy);
+}
+
+// ===================== CONNECTIONS =====================
+function drawConnections(cx, cy) {
+  const svg = document.getElementById('connections-svg');
+  svg.innerHTML = '';
+
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  defs.innerHTML = `
+    <filter id="glow-filter">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>`;
+  svg.appendChild(defs);
+
+  const connections = [
+    { from: 'nexus', to: 'phantom', active: true },
+    { from: 'nexus', to: 'mnemon',  active: true },
+    { from: 'nexus', to: 'oracle',  active: false },
+    { from: 'nexus', to: 'echo',    active: true },
+    { from: 'nexus', to: 'cipher',  active: true },
+    { from: 'nexus', to: 'sigma',   active: true },
+    { from: 'phantom','to': 'cipher', active: true },
+    { from: 'mnemon', to: 'oracle',   active: false },
+    { from: 'echo',   to: 'sigma',    active: true },
+  ];
+
+  connections.forEach((conn, i) => {
+    const fromNode = document.getElementById('node-' + conn.from);
+    const toNode   = document.getElementById('node-' + conn.to);
+    if (!fromNode || !toNode) return;
+
+    const x1 = parseFloat(fromNode.dataset.x);
+    const y1 = parseFloat(fromNode.dataset.y);
+    const x2 = parseFloat(toNode.dataset.x);
+    const y2 = parseFloat(toNode.dataset.y);
+
+    // Base line
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+    line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+    line.setAttribute('stroke', conn.active ? 'rgba(0,245,255,0.12)' : 'rgba(200,214,229,0.05)');
+    line.setAttribute('stroke-width', '1');
+    line.setAttribute('stroke-dasharray', '4,8');
+    svg.appendChild(line);
+
+    if (!conn.active) return;
+
+    // Animated orb travelling along the line
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('r', '3');
+    circle.setAttribute('fill', 'var(--cyan)');
+    circle.setAttribute('filter', 'url(#glow-filter)');
+    circle.setAttribute('opacity', '0.8');
+
+    const animX = document.createElementNS('http://www.w3.org/2000/svg','animate');
+    animX.setAttribute('attributeName','cx');
+    animX.setAttribute('values',`${x1};${x2};${x1}`);
+    animX.setAttribute('dur', `${3+i*0.7}s`);
+    animX.setAttribute('repeatCount','indefinite');
+    animX.setAttribute('calcMode','spline');
+    animX.setAttribute('keySplines','0.4 0 0.6 1;0.4 0 0.6 1');
+
+    const animY = document.createElementNS('http://www.w3.org/2000/svg','animate');
+    animY.setAttribute('attributeName','cy');
+    animY.setAttribute('values',`${y1};${y2};${y1}`);
+    animY.setAttribute('dur', `${3+i*0.7}s`);
+    animY.setAttribute('repeatCount','indefinite');
+    animY.setAttribute('calcMode','spline');
+    animY.setAttribute('keySplines','0.4 0 0.6 1;0.4 0 0.6 1');
+
+    circle.appendChild(animX);
+    circle.appendChild(animY);
+    svg.appendChild(circle);
+  });
+}
+
+// ===================== BOTTOM BAR =====================
+function buildBottomBar() {
+  const bar = document.getElementById('bottom-bar');
+  bar.innerHTML = '';
+
+  AGENTS.forEach(agent => {
+    const div = document.createElement('div');
+    div.className = `bottom-agent-strip ${agent.state}-strip`;
+    div.id = 'strip-' + agent.id;
+
+    const dotColor = agent.state === 'leading' ? 'var(--coral)'
+      : agent.state === 'reviewing' ? 'var(--amber)'
+      : agent.state === 'testing'   ? 'var(--purple)'
+      : agent.state === 'idle'      ? 'rgba(200,214,229,0.3)'
+      : 'var(--cyan)';
+
+    const barColor = agent.fill;
+
+    const miniBars = agent.cpu.map(v =>
+      `<div class="mini-bar" style="height:${v}%;background:${agent.fill}55"></div>`
+    ).join('');
+
+    div.innerHTML = `
+      <div class="strip-name">
+        <div style="width:5px;height:5px;border-radius:50%;background:${dotColor};box-shadow:0 0 6px ${dotColor};flex-shrink:0"></div>
+        <span style="color:${agent.fill}">${agent.emoji} ${agent.name}</span>
+      </div>
+      <div class="strip-task" id="strip-task-${agent.id}">${agent.task.substring(0,28)}${agent.task.length > 28 ? '…' : ''}</div>
+      <div class="strip-bar">
+        <div class="strip-fill" id="strip-fill-${agent.id}" style="width:${agent.progress}%;background:${barColor}88"></div>
+      </div>
+      <div class="mini-graph" id="mini-${agent.id}">${miniBars}</div>`;
+
+    bar.appendChild(div);
+  });
+}
+
+// ===================== TASKS =====================
+const TASK_LIST = [
+  { type:'done',   name:'event_queue.py',        agent:'NEXUS'   },
+  { type:'done',   name:'events.py',             agent:'NEXUS'   },
+  { type:'build',  name:'screen.py',             agent:'PHANTOM' },
+  { type:'build',  name:'mic.py',                agent:'PHANTOM' },
+  { type:'review', name:'capture/ PR#1',         agent:'CIPHER'  },
+  { type:'build',  name:'vector.py (ChromaDB)',  agent:'MNEMON'  },
+  { type:'build',  name:'structured.py (SQLite)',agent:'MNEMON'  },
+  { type:'build',  name:'overlay.py (HUD)',      agent:'ECHO'    },
+  { type:'test',   name:'test_screen.py',        agent:'SIGMA'   },
+  { type:'build',  name:'tts.py',                agent:'ECHO'    },
+  { type:'build',  name:'agent.py (2-stage)',    agent:'ORACLE'  },
+  { type:'build',  name:'knowledge_graph.py',    agent:'MNEMON'  },
+  { type:'build',  name:'calibrator.py',         agent:'ORACLE'  },
+  { type:'test',   name:'test_memory.py',        agent:'SIGMA'   },
+  { type:'review', name:'memory/ PR#2',          agent:'CIPHER'  },
+];
+
+function buildTaskQueue() {
+  const container = document.getElementById('task-queue');
+  container.innerHTML = '';
+  TASK_LIST.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'task-item';
+    div.innerHTML = `
+      <span class="task-badge ${t.type}">${t.type.toUpperCase()}</span>
+      <span class="task-name">${t.name}</span>
+      <span class="task-agent">${t.agent}</span>`;
+    container.appendChild(div);
+  });
+}
+
+// ===================== ACTIVITY LOG =====================
+const LOG_MESSAGES = [
+  { agent:'nexus',   msg:'Session initialized. 6 agents deployed.' },
+  { agent:'phantom', msg:'Loaded mss — screen watcher online.' },
+  { agent:'phantom', msg:'pixel_differ: threshold set to 0.15' },
+  { agent:'mnemon',  msg:'ChromaDB client connected. collection: context' },
+  { agent:'nexus',   msg:'Phantom → Cipher: review capture/ when ready' },
+  { agent:'echo',    msg:'PyQt6 HUD: frameless window created.' },
+  { agent:'sigma',   msg:'Writing test_screen.py — 3 tests passing' },
+  { agent:'mnemon',  msg:'Ebbinghaus decay function implemented.' },
+  { agent:'cipher',  msg:'Reviewing screen.py... checking diff threshold logic' },
+  { agent:'phantom', msg:'mic.py: VAD aggressiveness set to 2. Buffer ready.' },
+  { agent:'echo',    msg:'overlay.py: always-on-top confirmed. Bottom-right pos.' },
+  { agent:'nexus',   msg:'oracle is blocked — waiting on mnemon memory module' },
+  { agent:'sigma',   msg:'test_screen.py: 5/5 passing ✓' },
+  { agent:'cipher',  msg:'Found: no error handling on empty OCR output. Flag.' },
+  { agent:'mnemon',  msg:'SQLite tasks table: schema finalized.' },
+  { agent:'nexus',   msg:'Estimated 68% complete. On track.' },
+  { agent:'echo',    msg:'Piper TTS: aplay → paplay fallback working.' },
+  { agent:'phantom', msg:'push_to_talk.py: toggle record bound.' },
+  { agent:'mnemon',  msg:'knowledge_graph.py: node types defined.' },
+  { agent:'cipher',  msg:'Approved PR#1 with 1 change request.' },
+];
+
+let logIdx = 0;
+function addLog() {
+  const log = document.getElementById('activity-log');
+  if (logIdx >= LOG_MESSAGES.length) logIdx = 0;
+  const entry = LOG_MESSAGES[logIdx++];
+  const now = new Date();
+  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `<span class="log-ts">${ts}</span><span class="log-agent ${entry.agent}">[${entry.agent.toUpperCase()}]</span><span class="log-msg"> ${entry.msg}</span>`;
+  log.insertBefore(div, log.firstChild);
+
+  // Keep only last 40 entries
+  while (log.children.length > 40) log.removeChild(log.lastChild);
+}
+
+// ===================== CLOCK =====================
+let startTime = Date.now();
+function updateClock() {
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const h = Math.floor(elapsed / 3600);
+  const m = Math.floor((elapsed % 3600) / 60);
+  const s = elapsed % 60;
+  document.getElementById('mission-clock').textContent =
+    `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// ===================== LIVE SIMULATION =====================
+let completeCount = 2;
+function simulate() {
+  AGENTS.forEach(agent => {
+    if (agent.state === 'idle') return;
+    // Randomly nudge progress
+    const delta = (Math.random() - 0.1) * 3;
+    agent.progress = Math.max(5, Math.min(99, agent.progress + delta));
+    const bar = document.getElementById('prog-' + agent.id);
+    const fill = document.getElementById('strip-fill-' + agent.id);
+    if (bar) bar.style.width = agent.progress + '%';
+    if (fill) fill.style.width = agent.progress + '%';
+
+    // Shift cpu graph
+    agent.cpu.shift();
+    agent.cpu.push(Math.max(2, Math.min(98, agent.progress + (Math.random()-0.3)*20)));
+    const miniEl = document.getElementById('mini-' + agent.id);
+    if (miniEl) {
+      miniEl.innerHTML = agent.cpu.map(v =>
+        `<div class="mini-bar" style="height:${v}%;background:${agent.fill}55"></div>`
+      ).join('');
+    }
+  });
+
+  // Occasionally mark something done
+  if (Math.random() < 0.05) {
+    completeCount = Math.min(completeCount + 1, 15);
+    document.getElementById('stat-complete').textContent = completeCount;
+  }
+}
+
+let buildMode = true;
+function toggleMode() {
+  buildMode = !buildMode;
+  document.getElementById('mode-toggle').textContent =
+    buildMode ? 'ARIA MONITOR →' : '← BUILD MODE';
+  document.querySelector('.logo-sub').textContent =
+    buildMode ? 'construct control // build session active'
+              : 'aria pipeline monitor // live system';
+  if (!buildMode) window.location.href = '../monitor/index.html';
+}
+
+// ===================== LIVE DATA =====================
+async function fetchStatus() {
+  try {
+    const resp = await fetch('../status.json?_=' + Date.now());
+    if (!resp.ok) return;
+    const data = await resp.json();
+    updateAgentsFromStatus(data);
+  } catch (e) {
+    // server not running — keep showing last state
+  }
+}
+
+function updateAgentsFromStatus(data) {
+  AGENTS.forEach(agent => {
+    const live = data[agent.id];
+    if (!live) return;
+    agent.state    = live.state    || agent.state;
+    agent.task     = live.task     || agent.task;
+    agent.progress = live.progress ?? agent.progress;
+
+    const statusEl = document.getElementById('status-' + agent.id);
+    if (statusEl) statusEl.textContent = agent.task;
+
+    const prog = document.getElementById('prog-' + agent.id);
+    const fill = document.getElementById('strip-fill-' + agent.id);
+    if (prog) prog.style.width = agent.progress + '%';
+    if (fill) fill.style.width = agent.progress + '%';
+
+    const card = document.querySelector('#node-' + agent.id + ' .agent-card');
+    if (card) {
+      card.className = 'agent-card ' + agent.state;
+    }
+
+    if (live.log && live.log.length) {
+      const latest = live.log[live.log.length - 1];
+      const log = document.getElementById('activity-log');
+      if (log) {
+        const now = new Date();
+        const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        const div = document.createElement('div');
+        div.className = 'log-entry';
+        div.innerHTML = `<span class="log-ts">${ts}</span><span class="log-agent ${agent.id}">[${agent.id.toUpperCase()}]</span><span class="log-msg"> ${latest}</span>`;
+        log.insertBefore(div, log.firstChild);
+        while (log.children.length > 40) log.removeChild(log.lastChild);
+      }
+    }
+  });
+
+  const states = Object.values(data);
+  const completeEl = document.getElementById('stat-complete');
+  const activeEl = document.getElementById('stat-active');
+  const reviewEl = document.getElementById('stat-review');
+  const errorsEl = document.getElementById('stat-errors');
+  if (completeEl) completeEl.textContent = states.filter(a => a.progress === 100).length;
+  if (activeEl) activeEl.textContent = states.filter(a => a.state === 'active').length;
+  if (reviewEl) reviewEl.textContent = states.filter(a => a.state === 'reviewing').length;
+  if (errorsEl) errorsEl.textContent = states.filter(a => a.state === 'blocked').length;
+}
+
+// ===================== INIT =====================
+window.addEventListener('load', () => {
+  positionAgents();
+  buildBottomBar();
+  buildTaskQueue();
+  for (let i = 0; i < 8; i++) addLog();
+  setInterval(updateClock, 1000);
+  setInterval(simulate, 800);
+  setInterval(addLog, 4000);
+  setInterval(fetchStatus, 2000);
+  fetchStatus();
+  window.addEventListener('resize', positionAgents);
+});
+</script>
+</body>
+</html>
