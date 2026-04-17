@@ -3,47 +3,47 @@
     "state": "active",
     "task": "Infrastructure complete — squads deployed",
     "progress": 100,
-    "last_update": "",
-    "log": []
+    "last_update": "2026-04-18T00:00:00",
+    "log": ["Core + config committed to main", "Worktrees spawned for 4 squads", "Dashboard wired to status.json"]
   },
   "phantom": {
-    "state": "pending",
-    "task": "Awaiting Day 0 completion",
-    "progress": 0,
-    "last_update": "",
-    "log": []
+    "state": "active",
+    "task": "All capture/process modules complete — 29/29 tests",
+    "progress": 100,
+    "last_update": "2026-04-18T00:00:00",
+    "log": ["screen.py — pixel hash + diff ratio + ScreenWatcher", "mic.py — VAD, sounddevice lazy-loaded", "scene.py — app detection, EMA focus tracking", "ocr.py — sha256 deduplication", "stt.py — faster_whisper lazy load", "push_to_talk.py — toggle recording", "29/29 tests green"]
   },
   "mnemon": {
-    "state": "pending",
-    "task": "Awaiting Day 0 completion",
-    "progress": 0,
-    "last_update": "",
-    "log": []
+    "state": "active",
+    "task": "All memory modules complete — 40/40 tests",
+    "progress": 100,
+    "last_update": "2026-04-18T00:00:00",
+    "log": ["structured.py — SQLite tasks/commitments/facts", "vector.py — ChromaDB + Ebbinghaus retention", "knowledge_graph.py — in-memory KG with subgraph search", "episodic.py — sliding window + extractive summariser", "classifier.py — LLM JSON router", "40/40 tests green"]
   },
   "echo": {
-    "state": "pending",
-    "task": "Awaiting Day 0 completion",
-    "progress": 0,
-    "last_update": "",
-    "log": []
+    "state": "active",
+    "task": "All output modules complete — TTS, hotkey, HUD",
+    "progress": 100,
+    "last_update": "2026-04-18T00:00:00",
+    "log": ["tts.py — piper-tts, aplay/paplay fallback, idle unload", "hotkey.py — Ctrl+Shift+Space fires HOTKEY_PRESSED", "overlay.py — PyQt6 frameless HUD, auto-dismiss", "All tests green"]
   },
   "oracle": {
-    "state": "blocked",
-    "task": "Waiting for MNEMON >= 70%",
-    "progress": 0,
-    "last_update": "",
-    "log": []
+    "state": "active",
+    "task": "All decide modules complete — 15/15 tests",
+    "progress": 100,
+    "last_update": "2026-04-18T00:00:00",
+    "log": ["energy.py — adaptive interval 20-120s, novelty + focus EMA", "calibrator.py — LogisticRegression, JSONL log, auto-retrain after 50 samples", "agent.py — Generator + Critic two-stage Ollama calls", "15/15 tests green"]
   },
   "cipher": {
     "state": "idle",
-    "task": "Standing by for first PR",
+    "task": "Standing by — awaiting integration (Plan 5)",
     "progress": 0,
     "last_update": "",
     "log": []
   },
   "sigma": {
     "state": "idle",
-    "task": "Standing by for first module",
+    "task": "Standing by — ARIA Monitor next (Plan 7)",
     "progress": 0,
     "last_update": "",
     "log": []
