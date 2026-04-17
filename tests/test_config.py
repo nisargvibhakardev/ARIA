@@ -1,7 +1,5 @@
 # tests/test_config.py
 import textwrap
-import tempfile
-import os
 import pytest
 from config import Config
 
