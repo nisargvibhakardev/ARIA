@@ -66,3 +66,40 @@ def test_hotkey_listener_stop_does_not_raise():
     q = EventQueue()
     listener = HotkeyListener(queue=q, hotkey_str="ctrl+shift+space")
     listener.stop()
+
+import pytest
+
+
+def test_overlay_show_and_hide(qtbot):
+    from output.overlay import Overlay
+    from config import OverlayConfig
+    cfg = OverlayConfig(position="bottom-right", auto_dismiss_seconds=8)
+    overlay = Overlay(cfg)
+    qtbot.addWidget(overlay)
+    overlay.show_message("Meeting in 30 min", importance="high", reason="Deadline detected in screen text")
+    assert overlay.isVisible()
+    overlay.hide_message()
+    assert not overlay.isVisible()
+
+
+def test_overlay_low_importance_auto_dismiss(qtbot):
+    from output.overlay import Overlay
+    from config import OverlayConfig
+    cfg = OverlayConfig(position="bottom-right", auto_dismiss_seconds=1)
+    overlay = Overlay(cfg)
+    qtbot.addWidget(overlay)
+    overlay.show_message("Focus drift detected", importance="low", reason="App switch rate high")
+    assert overlay.isVisible()
+    qtbot.waitUntil(lambda: not overlay.isVisible(), timeout=3000)
+
+
+def test_overlay_engagement_callback(qtbot):
+    from output.overlay import Overlay
+    from config import OverlayConfig
+    engaged = []
+    cfg = OverlayConfig(position="bottom-right", auto_dismiss_seconds=8)
+    overlay = Overlay(cfg, on_engage=lambda: engaged.append(True))
+    qtbot.addWidget(overlay)
+    overlay.show_message("Hey", importance="high", reason="test")
+    overlay._on_got_it()
+    assert engaged == [True]
