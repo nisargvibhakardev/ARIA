@@ -1,7 +1,7 @@
 {
   "nexus": {
     "state": "active",
-    "task": "Infrastructure complete — squads deployed",
+    "task": "Infrastructure complete \u2014 squads deployed",
     "progress": 100,
     "last_update": "",
     "log": []
@@ -14,11 +14,18 @@
     "log": []
   },
   "mnemon": {
-    "state": "pending",
-    "task": "Awaiting Day 0 completion",
-    "progress": 0,
-    "last_update": "",
-    "log": []
+    "state": "active",
+    "task": "All memory modules complete. Awaiting CIPHER review + ORACLE can start.",
+    "progress": 100,
+    "last_update": "2026-04-18T01:04:23",
+    "log": [
+      "structured.py complete \u2014 tasks, commitments, key_facts, at_risk",
+      "vector.py complete \u2014 ChromaDB + Ebbinghaus decay + retrieval reinforcement",
+      "knowledge_graph.py complete \u2014 temporal entity graph, contradicts edges",
+      "episodic.py complete \u2014 30min summaries, extractive fallback",
+      "classifier.py complete \u2014 routes task/commitment/fact/contradiction/context",
+      "All tests passing (25/25)"
+    ]
   },
   "echo": {
     "state": "pending",
