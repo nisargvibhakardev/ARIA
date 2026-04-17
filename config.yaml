@@ -1,0 +1,48 @@
+screen:
+  interval_seconds: 3
+  diff_threshold: 0.15
+  monitor_index: 1
+
+mic:
+  vad_aggressiveness: 2
+
+memory:
+  rolling_days: 7
+  context_window_seconds: 120
+  ebbinghaus_purge_threshold: 0.2
+  initial_stability_days: 1.0
+  important_stability_days: 30.0
+
+episodic:
+  summary_interval_minutes: 30
+
+llm:
+  model: llama3.1:8b
+  keep_alive: 3m
+  response_language: english
+
+energy:
+  min_interval_seconds: 20
+  max_interval_seconds: 120
+
+calibrator:
+  min_samples: 50
+  retrain_every: 10
+
+idle_unload:
+  ocr_minutes: 3.0
+  whisper_minutes: 3.0
+  tts_minutes: 2.0
+
+whisper:
+  device: cpu
+  compute_type: int8
+
+hotkey: ctrl+shift+space
+
+overlay:
+  position: bottom-right
+  auto_dismiss_seconds: 8
+
+system:
+  nice_level: 10
