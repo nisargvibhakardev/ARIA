@@ -39,3 +39,30 @@ def test_tts_idle_unloads_after_timeout():
     time.sleep(0.05)
     tts.check_idle()
     assert tts._model is None
+
+from unittest.mock import MagicMock, patch
+from hotkey import HotkeyListener
+from core.events import EventType
+
+
+def test_hotkey_listener_fires_event():
+    from core.event_queue import EventQueue
+    q = EventQueue()
+    listener = HotkeyListener(queue=q, hotkey_str="ctrl+shift+space")
+    fired_events = []
+
+    original_put = q.put_nowait
+    def capture(event):
+        fired_events.append(event)
+    q.put_nowait = capture
+
+    listener._on_activate()
+    assert len(fired_events) == 1
+    assert fired_events[0].type == EventType.HOTKEY_PRESSED
+
+
+def test_hotkey_listener_stop_does_not_raise():
+    from core.event_queue import EventQueue
+    q = EventQueue()
+    listener = HotkeyListener(queue=q, hotkey_str="ctrl+shift+space")
+    listener.stop()
