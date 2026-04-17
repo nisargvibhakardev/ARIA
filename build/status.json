@@ -1,0 +1,51 @@
+{
+  "nexus": {
+    "state": "active",
+    "task": "Infrastructure complete — squads deployed",
+    "progress": 100,
+    "last_update": "",
+    "log": []
+  },
+  "phantom": {
+    "state": "pending",
+    "task": "Awaiting Day 0 completion",
+    "progress": 0,
+    "last_update": "",
+    "log": []
+  },
+  "mnemon": {
+    "state": "pending",
+    "task": "Awaiting Day 0 completion",
+    "progress": 0,
+    "last_update": "",
+    "log": []
+  },
+  "echo": {
+    "state": "pending",
+    "task": "Awaiting Day 0 completion",
+    "progress": 0,
+    "last_update": "",
+    "log": []
+  },
+  "oracle": {
+    "state": "blocked",
+    "task": "Waiting for MNEMON >= 70%",
+    "progress": 0,
+    "last_update": "",
+    "log": []
+  },
+  "cipher": {
+    "state": "idle",
+    "task": "Standing by for first PR",
+    "progress": 0,
+    "last_update": "",
+    "log": []
+  },
+  "sigma": {
+    "state": "idle",
+    "task": "Standing by for first module",
+    "progress": 0,
+    "last_update": "",
+    "log": []
+  }
+}
