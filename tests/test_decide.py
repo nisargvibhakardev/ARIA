@@ -93,65 +93,94 @@ def test_calibrator_persists_events_to_jsonl(calibrator):
 
 
 from unittest.mock import patch, MagicMock
-from decide.agent import DecisionAgent, GeneratorOutput, CriticOutput
+from decide.agent import DecisionAgent
 from config import LLMConfig
 
 
 def _make_agent():
     memory = MagicMock()
-    memory.vector.query.return_value = []
     memory.episodic.get_recent.return_value = []
-    memory.episodic.get_summaries.return_value = []
-    memory.structured.get_at_risk_commitments.return_value = []
-    memory.kg.subgraph.return_value = []
     return DecisionAgent(memory=memory, config=LLMConfig())
 
 
-def test_generator_output_schema():
-    out = GeneratorOutput(
-        say=True, message="You have a deadline in 2h",
-        type="deadline", importance=0.9,
-        reason="commit deadline < 3h", extract={}
-    )
-    assert out.say is True
-    assert 0.0 <= out.importance <= 1.0
-
-
-def test_critic_output_schema():
-    out = CriticOutput(suppress=False, reason="high urgency overrides focus")
-    assert out.suppress is False
-
-
-def test_decision_agent_returns_none_when_generator_says_no():
+def test_decision_agent_returns_none_when_say_false():
     agent = _make_agent()
-    mock_gen = MagicMock()
-    mock_gen.say = False
-
-    with patch.object(agent, "_call_generator", return_value=mock_gen):
+    with patch.object(agent, "_call_single", return_value=None):
         result = agent.evaluate(context={"recent": [], "scene": None})
     assert result is None
 
 
-def test_decision_agent_returns_none_when_critic_suppresses():
+def test_decision_agent_returns_result_when_say_true():
     agent = _make_agent()
-    mock_gen = MagicMock(say=True, message="Hey", type="task",
-                         importance=0.5, reason="test", extract={})
-    mock_critic = MagicMock(suppress=True)
-
-    with patch.object(agent, "_call_generator", return_value=mock_gen):
-        with patch.object(agent, "_call_critic", return_value=mock_critic):
-            result = agent.evaluate(context={"recent": [], "scene": None})
-    assert result is None
-
-
-def test_decision_agent_returns_message_when_both_approve():
-    agent = _make_agent()
-    mock_gen = MagicMock(say=True, message="Submit report soon",
-                         type="deadline", importance=0.9, reason="deadline < 2h", extract={})
-    mock_critic = MagicMock(suppress=False)
-
-    with patch.object(agent, "_call_generator", return_value=mock_gen):
-        with patch.object(agent, "_call_critic", return_value=mock_critic):
-            result = agent.evaluate(context={"recent": [], "scene": None})
+    expected = {"message": "Submit report soon", "type": "general",
+                "importance": 0.9, "reason": "deadline close", "extract": {}}
+    with patch.object(agent, "_call_single", return_value=expected):
+        result = agent.evaluate(context={"recent": [], "scene": None})
     assert result is not None
     assert result["message"] == "Submit report soon"
+
+
+def test_decision_agent_handles_timeout_gracefully():
+    agent = _make_agent()
+
+    def _raise(_ctx):
+        raise RuntimeError("request timed out")
+
+    with patch.object(agent, "_call_single", side_effect=_raise):
+        result = agent.evaluate(context={"recent": [], "scene": None})
+    assert result is not None
+    assert "timed out" in result["message"].lower()
+
+
+from decide.primer import LLMPrimer
+
+
+def test_llm_primer_opens_stream_on_rolling_transcript():
+    cfg = LLMConfig(model="aria-qwen", primer_enabled=True, primer_divergence_threshold=0.2)
+
+    with patch("ollama.Client") as mock_client_cls:
+        mock_client = mock_client_cls.return_value
+        mock_client.chat.return_value = iter([{"message": {"content": "hello"}}])
+        primer = LLMPrimer(cfg)
+        primer.on_rolling_transcript("hello world")
+
+    mock_client.chat.assert_called_once()
+    call_kwargs = mock_client.chat.call_args[1]
+    assert call_kwargs.get("stream") is True
+
+
+def test_llm_primer_cancels_on_high_divergence():
+    cfg = LLMConfig(model="aria-qwen", primer_enabled=True, primer_divergence_threshold=0.2)
+
+    with patch("ollama.Client") as mock_client_cls:
+        mock_client = mock_client_cls.return_value
+        mock_client.chat.return_value = iter([])
+        primer = LLMPrimer(cfg)
+        primer.on_rolling_transcript("hello world")
+        # Final text is very different: >20% normalized edit distance
+        result = primer.on_speech_detected("completely different utterance about cats")
+
+    assert result is None  # stream cancelled, new call needed
+
+
+def test_llm_primer_continues_on_low_divergence():
+    cfg = LLMConfig(model="aria-qwen", primer_enabled=True, primer_divergence_threshold=0.2)
+
+    with patch("ollama.Client") as mock_client_cls:
+        mock_client = mock_client_cls.return_value
+        mock_client.chat.return_value = iter([{"message": {"content": "hi"}}])
+        primer = LLMPrimer(cfg)
+        primer.on_rolling_transcript("hello world how are you")
+        # Final text is very close (identical)
+        result = primer.on_speech_detected("hello world how are you")
+
+    # Should return the stream (not None)
+    assert result is not None
+
+
+def test_llm_primer_disabled_does_nothing():
+    cfg = LLMConfig(primer_enabled=False)
+    primer = LLMPrimer(cfg)
+    primer.on_rolling_transcript("hello")
+    result = primer.on_speech_detected("hello")
+    assert result is None
