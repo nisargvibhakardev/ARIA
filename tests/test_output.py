@@ -103,3 +103,14 @@ def test_overlay_engagement_callback(qtbot):
     overlay.show_message("Hey", importance="high", reason="test")
     overlay._on_got_it()
     assert engaged == [True]
+
+
+def test_overlay_show_partial(qtbot):
+    from output.overlay import Overlay
+    from config import OverlayConfig
+    cfg = OverlayConfig(auto_dismiss_seconds=8)
+    overlay = Overlay(cfg)
+    qtbot.addWidget(overlay)
+    overlay.show_partial("hello wor")
+    assert overlay.isVisible()
+    assert "hello wor" in overlay._msg_label.text()

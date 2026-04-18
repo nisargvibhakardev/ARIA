@@ -11,6 +11,7 @@ class Overlay(QWidget):
     dismissed = pyqtSignal()
     _show_thinking_signal = pyqtSignal()
     _show_message_signal = pyqtSignal(str, str, str)
+    _show_partial_signal = pyqtSignal(str)
 
     def __init__(
         self,
@@ -25,6 +26,7 @@ class Overlay(QWidget):
         self._auto_timer.timeout.connect(self.hide_message)
         self._show_thinking_signal.connect(self._show_thinking_slot)
         self._show_message_signal.connect(self._show_message_slot)
+        self._show_partial_signal.connect(self._show_partial_slot)
         self._setup_ui()
         self.hide()
 
@@ -108,3 +110,15 @@ class Overlay(QWidget):
         if self._on_engage:
             self._on_engage()
         self.hide_message()
+
+    def show_partial(self, partial_text: str) -> None:
+        """Thread-safe — shows live rolling transcript while user is speaking."""
+        self._show_partial_signal.emit(partial_text)
+
+    def _show_partial_slot(self, partial_text: str) -> None:
+        self._auto_timer.stop()
+        self._msg_label.setText(f"🎙 {partial_text}…")
+        self._reason_label.setText("")
+        self._got_it_btn.setVisible(False)
+        self.adjustSize()
+        self.show()
