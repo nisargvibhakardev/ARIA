@@ -60,7 +60,7 @@ def test_mic_config_new_fields():
     assert cfg.done_word_phoneme_tolerance == 2
     assert cfg.chunk_frames == 533
     assert cfg.eot_probability_threshold == 0.7
-    assert cfg.eot_hard_cutoff_frames == 100
+    assert cfg.eot_hard_cutoff_frames == 50
     assert cfg.confidence_gate_logprob == -0.8
     assert cfg.noise_speech_prob_max == 0.6
 

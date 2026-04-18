@@ -2,6 +2,7 @@ screen:
   interval_seconds: 3.0
   diff_threshold: 0.15
   monitor_index: 1
+  enabled: false
 
 mic:
   vad_aggressiveness: 2
@@ -9,7 +10,7 @@ mic:
   done_word_phoneme_tolerance: 2
   chunk_frames: 533
   eot_probability_threshold: 0.7
-  eot_hard_cutoff_frames: 100
+  eot_hard_cutoff_frames: 50
   confidence_gate_logprob: -0.8
   noise_speech_prob_max: 0.6
 

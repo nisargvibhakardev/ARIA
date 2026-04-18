@@ -10,6 +10,7 @@ class ScreenConfig:
     interval_seconds: float = 3.0
     diff_threshold: float = 0.15
     monitor_index: int = 1
+    enabled: bool = True
 
 
 @dataclass
@@ -19,7 +20,7 @@ class MicConfig:
     done_word_phoneme_tolerance: int = 2
     chunk_frames: int = 533
     eot_probability_threshold: float = 0.7
-    eot_hard_cutoff_frames: int = 100
+    eot_hard_cutoff_frames: int = 50
     confidence_gate_logprob: float = -0.8
     noise_speech_prob_max: float = 0.6
 

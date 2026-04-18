@@ -88,7 +88,10 @@ class ARIAPipeline:
         self._overlay = overlay
 
     def start_capture(self) -> None:
-        self._screen_watcher.start()
+        if self._config.screen.enabled:
+            self._screen_watcher.start()
+        else:
+            print("[ARIA] screen capture disabled — OCR off", flush=True)
         self._mic_watcher.start()
         self._hotkey.start()
 
@@ -192,6 +195,20 @@ class ARIAPipeline:
 
         self._episodic.add_chunk(text, source="mic")
         self._vector.add(text)
+
+        # Respond to what was said
+        if self._overlay:
+            self._overlay.show_thinking()
+        recent = self._episodic.get_recent(seconds=120)
+        result = await loop.run_in_executor(
+            None, self._decision_agent.evaluate, {"recent": recent, "scene": None, "source": "speech"}
+        )
+        if result:
+            print(f"[ARIA] speech response: \"{result['message']}\"", flush=True)
+            await self._interrupt(result)
+        else:
+            if self._overlay:
+                self._overlay.hide_message()
 
     async def _handle_hotkey(self) -> None:
         if self._hotkey_lock is None or self._hotkey_lock.locked():

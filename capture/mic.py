@@ -181,6 +181,10 @@ class MicWatcher:
 
         if should_push_chunk:
             self._rolling_transcriber.push(snapshot)
+
+        # Hard cutoff fires on ANY frame — continuous speech can't block it
+        if self._eot.hard_cutoff_reached() and not self._flush_event.is_set():
+            self._trigger_flush()
         elif was_in_speech and not speech:
-            if self._eot.is_done() or self._eot.hard_cutoff_reached():
+            if self._eot.is_done():
                 self._trigger_flush()

@@ -21,7 +21,23 @@ class OCREngine:
             return self._last_text
         img = Image.fromarray(frame)
         text = pytesseract.image_to_string(img)
+        text = self._filter(text)
         self._last_hash = h
         self._last_text = text
         self._timer.reset()
         return text
+
+    @staticmethod
+    def _filter(text: str) -> str:
+        lines = []
+        for line in text.splitlines():
+            stripped = line.strip()
+            if len(stripped) < 6:
+                continue
+            # require at least 2 words that look like real English words (3+ lowercase letters)
+            words = stripped.split()
+            real_words = sum(1 for w in words if len(w) >= 3 and sum(c.islower() for c in w) >= 2)
+            if real_words < 2:
+                continue
+            lines.append(stripped)
+        return "\n".join(lines)

@@ -8,25 +8,11 @@ if TYPE_CHECKING:
     pass
 
 
-_SINGLE_PROMPT = """ARIA assistant. Screen context: {context}
+_SINGLE_PROMPT = """You are ARIA, an assistant. Respond in English only.
+{context_label}: {context}
 
-Reply JSON only: {{"say":true/false,"message":"max 20 words","importance":0.0-1.0,"reason":"5 words"}}"""
+Reply with JSON only, no other text: {{"say":true/false,"message":"max 20 words in English","importance":0.0-1.0,"reason":"5 words"}}"""
 
-
-@dataclass
-class GeneratorOutput:
-    say: bool
-    message: str
-    type: str
-    importance: float
-    reason: str
-    extract: dict
-
-
-@dataclass
-class CriticOutput:
-    suppress: bool
-    reason: str
 
 
 class DecisionAgent:
@@ -50,17 +36,22 @@ class DecisionAgent:
         client = ollama.Client(timeout=60)
         recent = context.get("recent", [])
         scene = context.get("scene")
+        source = context.get("source", "screen")
         ctx_text = " | ".join(c.get("text", "")[:60] for c in recent[-3:]) or "idle"
         if scene:
             ctx_text = f"[{scene.app}] {ctx_text}"
+        context_label = "User said" if source == "speech" else "Screen context"
 
-        prompt = _SINGLE_PROMPT.format(context=ctx_text[:200])
-        response = client.chat(
+        prompt = _SINGLE_PROMPT.format(context_label=context_label, context=ctx_text[:200])
+        kwargs: dict = dict(
             model=self._config.model,
             messages=[{"role": "user", "content": prompt}],
-            options={"temperature": 0.2, "num_predict": 80},
-            keep_alive="10m",
+            options={"temperature": 0.2, "num_predict": self._config.num_predict},
+            keep_alive=self._config.keep_alive,
         )
+        if self._config.format_json:
+            kwargs["format"] = "json"
+        response = client.chat(**kwargs)
         raw = response["message"]["content"].strip()
         try:
             data = json.loads(raw)
