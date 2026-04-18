@@ -205,12 +205,12 @@ def test_ocr_engine_processes_different_frames():
     engine = OCREngine(cfg)
     frame_a = np.zeros((100, 100, 3), dtype=np.uint8)
     frame_b = np.ones((100, 100, 3), dtype=np.uint8) * 128
-    with upatch("pytesseract.image_to_string", side_effect=["text a", "text b"]) as mock_ocr:
+    with upatch("pytesseract.image_to_string", side_effect=["hello world today", "something different here"]) as mock_ocr:
         r1 = engine.extract(frame_a)
         r2 = engine.extract(frame_b)
     assert mock_ocr.call_count == 2
-    assert r1 == "text a"
-    assert r2 == "text b"
+    assert r1 == "hello world today"
+    assert r2 == "something different here"
 
 
 def test_stt_engine_transcribes(monkeypatch):
@@ -251,3 +251,42 @@ def test_push_to_talk_stop_when_not_recording():
     ptt = PushToTalk()
     ptt.stop()
     assert not ptt.is_recording
+
+
+from capture.done_word import DoneWordDetector
+
+def test_done_word_exact_match():
+    d = DoneWordDetector("pineapple", tolerance=2)
+    assert d.check("pineapple") is True
+
+def test_done_word_split_variant():
+    d = DoneWordDetector("pineapple", tolerance=2)
+    assert d.check("pine apple") is True
+
+def test_done_word_initial_consonant_confusion():
+    # "find apple" has phoneme dist=2 from pineapple
+    d = DoneWordDetector("pineapple", tolerance=2)
+    assert d.check("find apple") is True
+
+def test_done_word_syllable_shift():
+    d = DoneWordDetector("pineapple", tolerance=2)
+    assert d.check("pie napple") is True
+
+def test_done_word_false_negative_apple():
+    d = DoneWordDetector("pineapple", tolerance=2)
+    assert d.check("I want an apple") is False
+
+def test_done_word_false_negative_unrelated():
+    d = DoneWordDetector("pineapple", tolerance=2)
+    assert d.check("hello world") is False
+
+def test_done_word_strips_from_text():
+    d = DoneWordDetector("pineapple", tolerance=2)
+    result = d.strip("please do that pineapple")
+    assert "pineapple" not in result.lower()
+    assert "please do that" in result
+
+def test_done_word_strips_split_variant():
+    d = DoneWordDetector("pineapple", tolerance=2)
+    result = d.strip("open the door pine apple")
+    assert result.strip() == "open the door"
