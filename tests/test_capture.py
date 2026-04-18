@@ -375,3 +375,89 @@ def test_stt_engine_passes_initial_prompt(monkeypatch):
     assert result["text"] == "hello"
     assert result["avg_logprob"] == -0.3
     assert result["no_speech_prob"] == 0.1
+
+
+from capture.rolling_transcriber import RollingTranscriber
+import queue, threading
+
+def _make_mock_stt(text=" hello", avg_logprob=-0.3, no_speech_prob=0.1):
+    from unittest.mock import MagicMock
+    stt = MagicMock()
+    stt.transcribe.return_value = {
+        "text": text, "language": "en",
+        "avg_logprob": avg_logprob, "no_speech_prob": no_speech_prob,
+    }
+    return stt
+
+def test_rolling_transcriber_emits_event_on_clean_chunk():
+    from core.event_queue import EventQueue
+    from core.events import EventType
+    from capture.done_word import DoneWordDetector
+    import asyncio, numpy as np
+
+    loop = asyncio.new_event_loop()
+    eq = EventQueue()
+    stt = _make_mock_stt(" hello world", avg_logprob=-0.3, no_speech_prob=0.1)
+    done_detector = DoneWordDetector("pineapple", tolerance=2)
+    flush_called = threading.Event()
+
+    rt = RollingTranscriber(
+        stt_engine=stt,
+        event_queue=eq,
+        done_detector=done_detector,
+        flush_callback=lambda: flush_called.set(),
+        confidence_gate_logprob=-0.8,
+        noise_speech_prob_max=0.6,
+    )
+    rt.start()
+
+    chunk = np.zeros(533 * 480, dtype=np.int16).tobytes()
+    rt.push(chunk)
+    import time; time.sleep(0.3)
+    rt.stop()
+
+    assert rt.rolling_text == "hello world"
+    loop.close()
+
+def test_rolling_transcriber_rejects_noisy_chunk():
+    from core.event_queue import EventQueue
+    from capture.done_word import DoneWordDetector
+    import numpy as np
+
+    eq = EventQueue()
+    stt = _make_mock_stt(" background noise", avg_logprob=-1.5, no_speech_prob=0.8)
+    done_detector = DoneWordDetector("pineapple", tolerance=2)
+
+    rt = RollingTranscriber(
+        stt_engine=stt, event_queue=eq,
+        done_detector=done_detector, flush_callback=lambda: None,
+        confidence_gate_logprob=-0.8, noise_speech_prob_max=0.6,
+    )
+    rt.start()
+    chunk = np.zeros(480 * 10, dtype=np.int16).tobytes()
+    rt.push(chunk)
+    import time; time.sleep(0.3)
+    rt.stop()
+
+    assert rt.rolling_text == ""
+
+def test_rolling_transcriber_triggers_flush_on_done_word():
+    from core.event_queue import EventQueue
+    from capture.done_word import DoneWordDetector
+    import numpy as np
+
+    eq = EventQueue()
+    stt = _make_mock_stt(" open the door pineapple", avg_logprob=-0.2, no_speech_prob=0.05)
+    done_detector = DoneWordDetector("pineapple", tolerance=2)
+    flush_called = threading.Event()
+
+    rt = RollingTranscriber(
+        stt_engine=stt, event_queue=eq,
+        done_detector=done_detector, flush_callback=lambda: flush_called.set(),
+        confidence_gate_logprob=-0.8, noise_speech_prob_max=0.6,
+    )
+    rt.start()
+    chunk = np.zeros(480 * 20, dtype=np.int16).tobytes()
+    rt.push(chunk)
+    assert flush_called.wait(timeout=2.0), "flush not triggered within 2s"
+    rt.stop()
