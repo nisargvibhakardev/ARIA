@@ -347,3 +347,31 @@ def test_eot_reset_clears_state():
     det.reset()
     assert det.hard_cutoff_reached() is False
     assert det.probability() < 0.7
+
+
+def test_stt_engine_passes_initial_prompt(monkeypatch):
+    from process.stt import STTEngine
+    from config import IdleUnloadConfig, WhisperConfig
+    from unittest.mock import MagicMock
+    from unittest.mock import patch as upatch
+
+    cfg_idle = IdleUnloadConfig(whisper_minutes=3.0)
+    cfg_whisper = WhisperConfig(device="cpu", compute_type="int8")
+    mock_model = MagicMock()
+    mock_seg = MagicMock()
+    mock_seg.text = " hello"
+    mock_seg.avg_logprob = -0.3
+    mock_seg.no_speech_prob = 0.1
+    mock_model.transcribe.return_value = ([mock_seg], MagicMock(language="en"))
+
+    with upatch("faster_whisper.WhisperModel", return_value=mock_model):
+        engine = STTEngine(cfg_idle, cfg_whisper)
+        import numpy as np
+        audio = np.zeros(16000, dtype=np.float32).tobytes()
+        result = engine.transcribe(audio, initial_prompt="test context")
+
+    call_kwargs = mock_model.transcribe.call_args[1]
+    assert call_kwargs.get("initial_prompt") == "test context"
+    assert result["text"] == "hello"
+    assert result["avg_logprob"] == -0.3
+    assert result["no_speech_prob"] == 0.1
