@@ -11,6 +11,7 @@ class EventType(Enum):
     SPEECH_DETECTED = "speech_detected"
     CONTEXT_CHUNK = "context_chunk"
     HOTKEY_PRESSED = "hotkey_pressed"
+    ROLLING_TRANSCRIPT = "rolling_transcript"
 
 
 @dataclass

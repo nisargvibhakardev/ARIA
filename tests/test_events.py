@@ -33,3 +33,15 @@ def test_event_data_preserved():
 def test_event_type_is_enum():
     e = Event(type=EventType.HOTKEY_PRESSED, data={})
     assert isinstance(e.type, EventType)
+
+
+def test_rolling_transcript_event_type_exists():
+    from core.events import EventType
+    assert hasattr(EventType, "ROLLING_TRANSCRIPT")
+
+
+def test_rolling_transcript_event_carries_payload():
+    from core.events import Event, EventType
+    e = Event(type=EventType.ROLLING_TRANSCRIPT, data={"partial_text": "hello", "confidence": -0.5})
+    assert e.data["partial_text"] == "hello"
+    assert e.data["confidence"] == -0.5
