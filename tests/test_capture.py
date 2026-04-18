@@ -461,3 +461,30 @@ def test_rolling_transcriber_triggers_flush_on_done_word():
     rt.push(chunk)
     assert flush_called.wait(timeout=2.0), "flush not triggered within 2s"
     rt.stop()
+
+
+def test_mic_watcher_v2_initialises():
+    from core.event_queue import EventQueue
+    from config import MicConfig
+    eq = EventQueue()
+    cfg = MicConfig(vad_aggressiveness=2, chunk_frames=533)
+    watcher = MicWatcher(eq, cfg)
+    assert watcher is not None
+
+def test_mic_watcher_v2_has_rolling_transcriber():
+    from core.event_queue import EventQueue
+    from config import MicConfig
+    from capture.rolling_transcriber import RollingTranscriber
+    eq = EventQueue()
+    cfg = MicConfig()
+    watcher = MicWatcher(eq, cfg)
+    assert isinstance(watcher._rolling_transcriber, RollingTranscriber)
+
+def test_mic_watcher_v2_has_eot_detector():
+    from core.event_queue import EventQueue
+    from config import MicConfig
+    from capture.eot_detector import EOTDetector
+    eq = EventQueue()
+    cfg = MicConfig()
+    watcher = MicWatcher(eq, cfg)
+    assert isinstance(watcher._eot, EOTDetector)
