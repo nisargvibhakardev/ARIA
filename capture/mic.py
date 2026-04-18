@@ -123,6 +123,7 @@ class MicWatcher:
 
         text = result.get("text", "").strip()
         if not text:
+            print("[mic] flush: empty transcription — discarded", flush=True)
             return
 
         # Strip done-word from final transcript

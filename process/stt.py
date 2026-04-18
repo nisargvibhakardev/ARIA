@@ -29,7 +29,7 @@ class STTEngine:
             audio,
             beam_size=1,
             language="en",
-            vad_filter=True,
+            vad_filter=False,
             initial_prompt=initial_prompt if initial_prompt else None,
         )
         segments = list(segments_iter)
