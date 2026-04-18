@@ -219,6 +219,11 @@ class ARIAPipeline:
             if self._overlay:
                 self._overlay.show_thinking()
             recent = self._episodic.get_recent(seconds=120)
+            if not recent:
+                print("[ARIA] hotkey: no context yet — prompting user", flush=True)
+                if self._overlay:
+                    self._overlay.show_message("I'm listening. Say something first.", "low", "No context")
+                return
             recent_texts = [c.get("text", "")[:80] for c in recent[-5:]]
             print(f"[ARIA] context window ({len(recent)} chunks):", flush=True)
             for i, t in enumerate(recent_texts):
@@ -249,7 +254,16 @@ class ARIAPipeline:
             last_message=result["message"],
         )
         loop = asyncio.get_event_loop()
-        loop.run_in_executor(None, self._tts.speak, result["message"])
+        mic = self._mic_watcher
+
+        def _speak_muted(text: str) -> None:
+            mic.mute()
+            try:
+                self._tts.speak(text)
+            finally:
+                mic.unmute()
+
+        loop.run_in_executor(None, _speak_muted, result["message"])
 
     def stop(self) -> None:
         self._running = False

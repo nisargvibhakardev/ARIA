@@ -53,9 +53,16 @@ class MicWatcher:
         self._in_speech = False
         self._frames_since_chunk = 0
         self._flush_event = threading.Event()
+        self._muted = False
         self._running = False
         self._thread: threading.Thread | None = None
         self._flush_thread: threading.Thread | None = None
+
+    def mute(self) -> None:
+        self._muted = True
+
+    def unmute(self) -> None:
+        self._muted = False
 
     def set_stt_engine(self, stt_engine) -> None:
         self._stt = stt_engine
@@ -155,6 +162,8 @@ class MicWatcher:
                 sd.sleep(100)
 
     def _process_frame(self, frame: bytes) -> None:
+        if self._muted:
+            return
         speech = is_speech_frame(self._vad, frame, SAMPLE_RATE)
 
         snapshot = None
