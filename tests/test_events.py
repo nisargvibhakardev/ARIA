@@ -38,6 +38,7 @@ def test_event_type_is_enum():
 def test_rolling_transcript_event_type_exists():
     from core.events import EventType
     assert hasattr(EventType, "ROLLING_TRANSCRIPT")
+    assert EventType.ROLLING_TRANSCRIPT.value == "rolling_transcript"
 
 
 def test_rolling_transcript_event_carries_payload():
