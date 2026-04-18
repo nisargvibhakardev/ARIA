@@ -290,3 +290,60 @@ def test_done_word_strips_split_variant():
     d = DoneWordDetector("pineapple", tolerance=2)
     result = d.strip("open the door pine apple")
     assert result.strip() == "open the door"
+
+
+from capture.eot_detector import EOTDetector
+import numpy as np
+
+def _make_frames(n_frames: int, amplitude: float) -> list[bytes]:
+    """Generate n_frames of 30ms PCM audio at given amplitude."""
+    samples_per_frame = 480  # 30ms at 16kHz
+    frames = []
+    for _ in range(n_frames):
+        pcm = (np.random.randn(samples_per_frame) * amplitude * 32767).astype(np.int16)
+        frames.append(pcm.tobytes())
+    return frames
+
+def test_eot_high_energy_mid_utterance():
+    det = EOTDetector(threshold=0.7, hard_cutoff_frames=100)
+    samples_per_frame = 480
+    frames = []
+    for i in range(20):
+        amp = 0.1 + i * 0.02  # rising amplitude 0.1 → 0.48
+        pcm = (np.random.randn(samples_per_frame) * amp * 32767).astype(np.int16)
+        frames.append(pcm.tobytes())
+    det.update(frames)
+    assert det.probability() < 0.7
+
+def test_eot_falling_energy_end_of_utterance():
+    det = EOTDetector(threshold=0.7, hard_cutoff_frames=100)
+    # Build frames with rapidly decaying energy
+    samples_per_frame = 480
+    frames = []
+    for i in range(20):
+        amp = max(0.0, 0.5 - i * 0.04)  # decays to 0
+        pcm = (np.random.randn(samples_per_frame) * amp * 32767).astype(np.int16)
+        frames.append(pcm.tobytes())
+    det.update(frames)
+    assert det.probability() > 0.7
+
+def test_eot_hard_cutoff_triggers():
+    det = EOTDetector(threshold=0.7, hard_cutoff_frames=5)
+    frames = _make_frames(5, amplitude=0.3)
+    det.update(frames)
+    assert det.hard_cutoff_reached() is True
+
+def test_eot_hard_cutoff_not_triggered_early():
+    det = EOTDetector(threshold=0.7, hard_cutoff_frames=100)
+    frames = _make_frames(10, amplitude=0.3)
+    det.update(frames)
+    assert det.hard_cutoff_reached() is False
+
+def test_eot_reset_clears_state():
+    det = EOTDetector(threshold=0.7, hard_cutoff_frames=5)
+    frames = _make_frames(5, amplitude=0.3)
+    det.update(frames)
+    assert det.hard_cutoff_reached() is True
+    det.reset()
+    assert det.hard_cutoff_reached() is False
+    assert det.probability() < 0.7
