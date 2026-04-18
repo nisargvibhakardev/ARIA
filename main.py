@@ -22,6 +22,7 @@ from memory.knowledge_graph import KnowledgeGraph
 from memory.episodic import EpisodicMemory
 from memory.classifier import MemoryClassifier
 from decide.agent import DecisionAgent
+from decide.primer import LLMPrimer
 from decide.energy import EnergyScheduler
 from decide.calibrator import InterruptCalibrator
 from output.overlay import Overlay
@@ -64,6 +65,7 @@ class ARIAPipeline:
 
         self._classifier = MemoryClassifier(self._structured, self._vector, self._kg)
         self._decision_agent = DecisionAgent(memory=mem, config=config.llm)
+        self._primer = LLMPrimer(config.llm)
         self._energy = EnergyScheduler(config.energy)
         self._calibrator = InterruptCalibrator(config.calibrator)
 
@@ -75,11 +77,12 @@ class ARIAPipeline:
         self._tts = TTS(config.idle_unload)
 
         self._screen_watcher = ScreenWatcher(self._queue, config.screen)
-        self._mic_watcher = MicWatcher(self._queue, config.mic)
+        self._mic_watcher = MicWatcher(self._queue, config.mic, stt_engine=self._stt)
         self._hotkey = HotkeyListener(self._queue, config.hotkey)
 
         self._last_decision_at: float = 0.0
         self._running = False
+        self._hotkey_lock: asyncio.Lock | None = None
 
     def set_overlay(self, overlay: Overlay) -> None:
         self._overlay = overlay
@@ -91,10 +94,11 @@ class ARIAPipeline:
 
     async def run(self) -> None:
         print("[ARIA] pipeline run() entered — waiting for events", flush=True)
+        self._hotkey_lock = asyncio.Lock()
         self._running = True
         while self._running:
             event = await self._queue.get()
-            await self._handle_event(event)
+            asyncio.create_task(self._handle_event(event))
             self._queue.task_done()
 
     async def _handle_event(self, event: Event) -> None:
@@ -105,6 +109,14 @@ class ARIAPipeline:
             await self._process_speech(event)
         elif event.type == EventType.HOTKEY_PRESSED:
             await self._handle_hotkey()
+        elif event.type == EventType.ROLLING_TRANSCRIPT:
+            await self._process_rolling_transcript(event)
+
+    async def _process_rolling_transcript(self, event: Event) -> None:
+        partial = event.data.get("partial_text", "")
+        if self._overlay:
+            self._overlay.show_partial(partial)
+        self._primer.on_rolling_transcript(partial)
 
     async def _process_screen(self, event: Event) -> None:
         screenshot = event.data["screenshot"]
@@ -119,6 +131,7 @@ class ARIAPipeline:
         )
         if not text.strip():
             return
+        print(f"[ARIA] OCR [{window_title[:40] or 'unknown'}]: \"{text[:120].strip()}\"", flush=True)
         scene = self._scene_parser.parse(window_title, text)
         self._episodic.add_chunk(text, source="screen")
         self._vector.add(text)
@@ -152,28 +165,59 @@ class ARIAPipeline:
 
     async def _process_speech(self, event: Event) -> None:
         audio = event.data["audio_bytes"]
-        transcript = self._stt.transcribe(audio)
-        text = transcript.get("text", "").strip()
-        if not text:
-            return
+        audio_ms = round(len(audio) / 32)  # 16kHz 16-bit = 32 bytes/ms
+        print(f"[ARIA] STT: transcribing {audio_ms}ms of audio...", flush=True)
+        loop = asyncio.get_event_loop()
+        pre_text = event.data.get("text", "")
+        if pre_text:
+            text = pre_text
+            print(f"[ARIA] STT: using pre-transcribed text ({audio_ms}ms): \"{text}\"", flush=True)
+        else:
+            transcript = await loop.run_in_executor(None, self._stt.transcribe, audio)
+            text = transcript.get("text", "").strip()
+            if not text:
+                print("[ARIA] STT: no speech detected in audio chunk", flush=True)
+                return
+            print(f"[ARIA] STT: \"{text}\"", flush=True)
+
+        # Notify primer that final text is ready
+        primer_stream = self._primer.on_speech_detected(text)
+        if primer_stream is not None:
+            # Warm stream available but DecisionAgent doesn't consume streams yet — drain it
+            try:
+                for _ in primer_stream:
+                    pass
+            except Exception:
+                pass
+
         self._episodic.add_chunk(text, source="mic")
         self._vector.add(text)
 
     async def _handle_hotkey(self) -> None:
-        print("[ARIA] hotkey received — showing thinking overlay", flush=True)
-        if self._overlay:
-            self._overlay.show_thinking()
-        print("[ARIA] calling LLM...", flush=True)
-        recent = self._episodic.get_recent(seconds=120)
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, self._decision_agent.evaluate, {"recent": recent, "scene": None}
-        )
-        print(f"[ARIA] LLM result: {result}", flush=True)
-        if result:
-            await self._interrupt(result)
-        elif self._overlay:
-            self._overlay.show_message("Nothing urgent right now.", "low", "Hotkey query")
+        if self._hotkey_lock is None or self._hotkey_lock.locked():
+            print("[ARIA] hotkey ignored — LLM already running", flush=True)
+            return
+        async with self._hotkey_lock:
+            print("[ARIA] hotkey received — showing thinking overlay", flush=True)
+            if self._overlay:
+                self._overlay.show_thinking()
+            recent = self._episodic.get_recent(seconds=120)
+            recent_texts = [c.get("text", "")[:80] for c in recent[-5:]]
+            print(f"[ARIA] context window ({len(recent)} chunks):", flush=True)
+            for i, t in enumerate(recent_texts):
+                print(f"  [{i+1}] {t!r}", flush=True)
+            print("[ARIA] calling LLM...", flush=True)
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, self._decision_agent.evaluate, {"recent": recent, "scene": None}
+            )
+            if result:
+                print(f"[ARIA] response: \"{result['message']}\" (importance={result['importance']:.2f})", flush=True)
+                await self._interrupt(result)
+            else:
+                print("[ARIA] response: say=false — showing idle message", flush=True)
+                if self._overlay:
+                    self._overlay.show_message("Nothing urgent right now.", "low", "Hotkey query")
 
     async def _interrupt(self, result: dict) -> None:
         if self._overlay:
@@ -234,7 +278,8 @@ def main() -> None:
         try:
             ollama.chat(model=config.llm.model,
                         messages=[{"role": "user", "content": "hi"}],
-                        keep_alive="10m")
+                        options={"num_predict": 1},
+                        keep_alive=config.llm.keep_alive)
             print("[ARIA] model warmed up", flush=True)
         except Exception:
             pass
