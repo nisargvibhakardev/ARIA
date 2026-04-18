@@ -3,6 +3,8 @@ mss>=9.0.1
 pytesseract>=0.3.10
 sounddevice>=0.4.6
 webrtcvad>=2.0.10
+g2p-en>=2.1.0
+rapidfuzz>=3.0.0
 
 # Speech-to-text
 faster-whisper>=1.0.0

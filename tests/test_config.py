@@ -51,3 +51,21 @@ def test_idle_unload_minutes():
     assert cfg.idle_unload.ocr_minutes == 3.0
     assert cfg.idle_unload.whisper_minutes == 3.0
     assert cfg.idle_unload.tts_minutes == 2.0
+
+
+def test_mic_config_new_fields():
+    from config import MicConfig
+    cfg = MicConfig()
+    assert cfg.done_word == "pineapple"
+    assert cfg.done_word_phoneme_tolerance == 2
+    assert cfg.chunk_frames == 533
+    assert cfg.eot_probability_threshold == 0.7
+    assert cfg.eot_hard_cutoff_frames == 100
+    assert cfg.confidence_gate_logprob == -0.8
+    assert cfg.noise_speech_prob_max == 0.6
+
+def test_llm_config_primer_fields():
+    from config import LLMConfig
+    cfg = LLMConfig()
+    assert cfg.primer_enabled is True
+    assert cfg.primer_divergence_threshold == 0.2

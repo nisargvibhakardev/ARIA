@@ -5,6 +5,13 @@ screen:
 
 mic:
   vad_aggressiveness: 2
+  done_word: pineapple
+  done_word_phoneme_tolerance: 2
+  chunk_frames: 533
+  eot_probability_threshold: 0.7
+  eot_hard_cutoff_frames: 100
+  confidence_gate_logprob: -0.8
+  noise_speech_prob_max: 0.6
 
 memory:
   rolling_days: 7
@@ -17,9 +24,13 @@ episodic:
   summary_interval_minutes: 30
 
 llm:
-  model: llama3.2:3b
-  keep_alive: 3m
+  model: aria-qwen
+  keep_alive: 10m
   response_language: english
+  num_predict: 80
+  format_json: true
+  primer_enabled: true
+  primer_divergence_threshold: 0.2
 
 energy:
   min_interval_seconds: 20
@@ -35,6 +46,7 @@ idle_unload:
   tts_minutes: 2.0
 
 whisper:
+  model: tiny.en
   device: cpu
   compute_type: int8
 

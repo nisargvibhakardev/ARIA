@@ -15,6 +15,13 @@ class ScreenConfig:
 @dataclass
 class MicConfig:
     vad_aggressiveness: int = 2
+    done_word: str = "pineapple"
+    done_word_phoneme_tolerance: int = 2
+    chunk_frames: int = 533
+    eot_probability_threshold: float = 0.7
+    eot_hard_cutoff_frames: int = 100
+    confidence_gate_logprob: float = -0.8
+    noise_speech_prob_max: float = 0.6
 
 
 @dataclass
@@ -36,6 +43,10 @@ class LLMConfig:
     model: str = "llama3.1:8b"
     keep_alive: str = "3m"
     response_language: str = "english"
+    num_predict: int = 80
+    format_json: bool = True
+    primer_enabled: bool = True
+    primer_divergence_threshold: float = 0.2
 
 
 @dataclass
@@ -59,6 +70,7 @@ class IdleUnloadConfig:
 
 @dataclass
 class WhisperConfig:
+    model: str = "tiny.en"
     device: str = "cpu"
     compute_type: str = "int8"
 
