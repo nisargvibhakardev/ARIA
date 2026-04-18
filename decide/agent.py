@@ -8,10 +8,15 @@ if TYPE_CHECKING:
     pass
 
 
-_SINGLE_PROMPT = """You are ARIA, an assistant. Respond in English only.
-{context_label}: {context}
+_SYSTEM_PROMPT = (
+    "You are ARIA, a voice assistant. Respond helpfully and naturally in English only. "
+    "Always set say=true when the user asks you a question or speaks to you directly."
+)
 
-Reply with JSON only, no other text: {{"say":true/false,"message":"max 20 words in English","importance":0.0-1.0,"reason":"5 words"}}"""
+_USER_PROMPT = (
+    '{context_label}: "{context}"\n\n'
+    'Reply with JSON only: {{"say":true,"message":"reply in max 20 words","importance":0.0-1.0,"reason":"5 words"}}'
+)
 
 
 
@@ -42,10 +47,13 @@ class DecisionAgent:
             ctx_text = f"[{scene.app}] {ctx_text}"
         context_label = "User said" if source == "speech" else "Screen context"
 
-        prompt = _SINGLE_PROMPT.format(context_label=context_label, context=ctx_text[:200])
+        user_msg = _USER_PROMPT.format(context_label=context_label, context=ctx_text[:200])
         kwargs: dict = dict(
             model=self._config.model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": user_msg},
+            ],
             options={"temperature": 0.2, "num_predict": self._config.num_predict},
             keep_alive=self._config.keep_alive,
         )
