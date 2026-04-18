@@ -90,6 +90,7 @@ class ARIAPipeline:
         self._hotkey.start()
 
     async def run(self) -> None:
+        print("[ARIA] pipeline run() entered — waiting for events", flush=True)
         self._running = True
         while self._running:
             event = await self._queue.get()
@@ -97,6 +98,7 @@ class ARIAPipeline:
             self._queue.task_done()
 
     async def _handle_event(self, event: Event) -> None:
+        print(f"[ARIA] handling event: {event.type}", flush=True)
         if event.type == EventType.SCREEN_CHANGED:
             await self._process_screen(event)
         elif event.type == EventType.SPEECH_DETECTED:
@@ -107,7 +109,8 @@ class ARIAPipeline:
     async def _process_screen(self, event: Event) -> None:
         screenshot = event.data["screenshot"]
         window_title = event.data.get("window_title", "")
-        text = self._ocr.extract(screenshot)
+        loop = asyncio.get_event_loop()
+        text = await loop.run_in_executor(None, self._ocr.extract, screenshot)
         monitor_writer.update_capture(vad="silence", diff_pct=0.0, ocr_loaded=True)
         monitor_writer.update_process(
             ocr_idle_countdown=self._ocr._timer._timeout - (time.monotonic() - self._ocr._timer._last_reset),
@@ -133,7 +136,9 @@ class ARIAPipeline:
         self._last_decision_at = now
 
         recent = self._episodic.get_recent(seconds=120)
-        result = self._decision_agent.evaluate({"recent": recent, "scene": scene})
+        result = await loop.run_in_executor(
+            None, self._decision_agent.evaluate, {"recent": recent, "scene": scene}
+        )
         monitor_writer.update_decide(
             interval=self._energy.next_interval(),
             generator_verdict=result is not None,
@@ -155,10 +160,16 @@ class ARIAPipeline:
         self._vector.add(text)
 
     async def _handle_hotkey(self) -> None:
+        print("[ARIA] hotkey received — showing thinking overlay", flush=True)
         if self._overlay:
             self._overlay.show_thinking()
+        print("[ARIA] calling LLM...", flush=True)
         recent = self._episodic.get_recent(seconds=120)
-        result = self._decision_agent.evaluate({"recent": recent, "scene": None})
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None, self._decision_agent.evaluate, {"recent": recent, "scene": None}
+        )
+        print(f"[ARIA] LLM result: {result}", flush=True)
         if result:
             await self._interrupt(result)
         elif self._overlay:
@@ -186,13 +197,20 @@ class ARIAPipeline:
         self._hotkey.stop()
 
 
-def _run_pipeline(pipeline: ARIAPipeline) -> None:
-    loop = asyncio.new_event_loop()
+def _run_pipeline(pipeline: ARIAPipeline, loop: asyncio.AbstractEventLoop) -> None:
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(pipeline.run())
+    try:
+        print("[ARIA] pipeline loop starting", flush=True)
+        loop.run_until_complete(pipeline.run())
+    except Exception as e:
+        import traceback
+        print(f"[ARIA] pipeline CRASHED: {e}", flush=True)
+        traceback.print_exc()
 
 
 def main() -> None:
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     _apply_nice(10)
     config = Config.from_yaml("config.yaml")
 
@@ -203,10 +221,25 @@ def main() -> None:
     overlay = Overlay(config.overlay, on_engage=lambda: None)
     pipeline.set_overlay(overlay)
 
+    loop = asyncio.new_event_loop()
+
     pipeline_thread = threading.Thread(
-        target=_run_pipeline, args=(pipeline,), daemon=True
+        target=_run_pipeline, args=(pipeline, loop), daemon=True
     )
     pipeline_thread.start()
+
+    # Pre-warm the model so first hotkey press isn't a cold load
+    def _warm():
+        import ollama
+        try:
+            ollama.chat(model=config.llm.model,
+                        messages=[{"role": "user", "content": "hi"}],
+                        keep_alive="10m")
+            print("[ARIA] model warmed up", flush=True)
+        except Exception:
+            pass
+    threading.Thread(target=_warm, daemon=True).start()
+
     pipeline.start_capture()
 
     exit_code = app.exec()

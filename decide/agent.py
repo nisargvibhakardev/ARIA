@@ -8,44 +8,9 @@ if TYPE_CHECKING:
     pass
 
 
-_GENERATOR_PROMPT = """You are ARIA's interrupt decision engine.
+_SINGLE_PROMPT = """ARIA assistant. Screen context: {context}
 
-Context (last 2 minutes):
-{recent_context}
-
-Episodic summaries (today):
-{summaries}
-
-At-risk commitments:
-{at_risk}
-
-Active entities on screen:
-{entities}
-
-Decide if ARIA should interrupt the user RIGHT NOW.
-Respond with valid JSON only:
-{{
-  "say": true/false,
-  "message": "concise message to user (max 30 words)",
-  "type": "task|commitment|fact|focus_drift|deadline|contradiction",
-  "importance": 0.0-1.0,
-  "reason": "one-line explainability reason",
-  "extract": {{"type": "...", "text": "..."}}
-}}"""
-
-_CRITIC_PROMPT = """You are ARIA's interrupt critic.
-
-Proposed message: {message}
-Importance: {importance}
-Current app: {app}
-Task type: {task_type}
-Focus level: {focus_level} (0=unfocused, 1=deep focus)
-
-Should ARIA suppress this interrupt right now?
-Respond with valid JSON only:
-{{"suppress": true/false, "reason": "one line"}}
-
-Rules: High focus (>0.8) + low importance (<0.6) = suppress. High urgency (>0.85) = never suppress."""
+Reply JSON only: {{"say":true/false,"message":"max 20 words","importance":0.0-1.0,"reason":"5 words"}}"""
 
 
 @dataclass
@@ -70,78 +35,52 @@ class DecisionAgent:
         self._config = config
 
     def evaluate(self, context: dict) -> dict | None:
-        gen = self._call_generator(context)
-        if not gen.say:
-            return None
-        critic = self._call_critic(gen, context)
-        if critic.suppress:
+        try:
+            return self._call_single(context)
+        except Exception as e:
+            msg = str(e).lower()
+            if "timed out" in msg or "timeout" in msg:
+                return {"message": "Ollama timed out — model too slow for this hardware.",
+                        "type": "focus_drift", "importance": 0.3,
+                        "reason": "LLM timeout", "extract": {}}
+            raise
+
+    def _call_single(self, context: dict) -> dict | None:
+        import ollama
+        client = ollama.Client(timeout=60)
+        recent = context.get("recent", [])
+        scene = context.get("scene")
+        ctx_text = " | ".join(c.get("text", "")[:60] for c in recent[-3:]) or "idle"
+        if scene:
+            ctx_text = f"[{scene.app}] {ctx_text}"
+
+        prompt = _SINGLE_PROMPT.format(context=ctx_text[:200])
+        response = client.chat(
+            model=self._config.model,
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.2, "num_predict": 80},
+            keep_alive="10m",
+        )
+        raw = response["message"]["content"].strip()
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            # try extracting JSON from response
+            import re
+            m = re.search(r'\{.*\}', raw, re.DOTALL)
+            if m:
+                try:
+                    data = json.loads(m.group())
+                except json.JSONDecodeError:
+                    return None
+            else:
+                return None
+        if not data.get("say", False):
             return None
         return {
-            "message": gen.message,
-            "type": gen.type,
-            "importance": gen.importance,
-            "reason": gen.reason,
-            "extract": gen.extract,
+            "message": data.get("message", ""),
+            "type": "general",
+            "importance": float(data.get("importance", 0.5)),
+            "reason": data.get("reason", ""),
+            "extract": {},
         }
-
-    def _call_generator(self, context: dict) -> GeneratorOutput:
-        import ollama
-        recent = context.get("recent", [])
-        summaries = self._memory.episodic.get_summaries(limit=5)
-        at_risk = self._memory.structured.get_at_risk_commitments(within_hours=3)
-        scene = context.get("scene")
-        entities = scene.entities if scene else []
-
-        prompt = _GENERATOR_PROMPT.format(
-            recent_context="\n".join(c.get("text", "") for c in recent) or "None",
-            summaries="\n".join(s.get("text", "") for s in summaries) or "None",
-            at_risk="\n".join(c.get("text", "") for c in at_risk) or "None",
-            entities=", ".join(entities) or "None",
-        )
-        response = ollama.chat(
-            model=self._config.model,
-            messages=[{"role": "user", "content": prompt}],
-            options={"temperature": 0.2},
-        )
-        raw = response["message"]["content"].strip()
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            return GeneratorOutput(say=False, message="", type="", importance=0.0, reason="parse error", extract={})
-        return GeneratorOutput(
-            say=bool(data.get("say", False)),
-            message=data.get("message", ""),
-            type=data.get("type", ""),
-            importance=float(data.get("importance", 0.0)),
-            reason=data.get("reason", ""),
-            extract=data.get("extract", {}),
-        )
-
-    def _call_critic(self, gen: GeneratorOutput, context: dict) -> CriticOutput:
-        import ollama
-        scene = context.get("scene")
-        app = scene.app if scene else "unknown"
-        task_type = scene.task_type if scene else "general"
-        focus = scene.focus_level if scene else 0.5
-
-        prompt = _CRITIC_PROMPT.format(
-            message=gen.message,
-            importance=gen.importance,
-            app=app,
-            task_type=task_type,
-            focus_level=round(focus, 2),
-        )
-        response = ollama.chat(
-            model=self._config.model,
-            messages=[{"role": "user", "content": prompt}],
-            options={"temperature": 0.1},
-        )
-        raw = response["message"]["content"].strip()
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            return CriticOutput(suppress=False, reason="parse error")
-        return CriticOutput(
-            suppress=bool(data.get("suppress", False)),
-            reason=data.get("reason", ""),
-        )

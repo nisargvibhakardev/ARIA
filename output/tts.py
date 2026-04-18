@@ -23,9 +23,10 @@ class TTS:
             self._load()
         self._timer.reset()
         import io
+        import wave
         buf = io.BytesIO()
-        with self._model.output_to_wav_file(buf):
-            self._model.synthesize(text)
+        with wave.open(buf, 'wb') as wav_file:
+            self._model.synthesize(text, wav_file)
         return buf.getvalue()
 
     def speak(self, text: str) -> None:

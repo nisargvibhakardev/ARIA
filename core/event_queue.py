@@ -1,21 +1,28 @@
 # core/event_queue.py
 from __future__ import annotations
 import asyncio
+import queue
 from .events import Event
 
 
 class EventQueue:
+    """Thread-safe event queue. put_nowait() can be called from any thread."""
+
     def __init__(self) -> None:
-        self._queue: asyncio.Queue[Event] = asyncio.Queue()
+        self._queue: queue.SimpleQueue[Event] = queue.SimpleQueue()
 
     async def put(self, event: Event) -> None:
-        await self._queue.put(event)
+        self._queue.put_nowait(event)
 
     def put_nowait(self, event: Event) -> None:
         self._queue.put_nowait(event)
 
     async def get(self) -> Event:
-        return await self._queue.get()
+        while True:
+            try:
+                return self._queue.get_nowait()
+            except queue.Empty:
+                await asyncio.sleep(0.005)
 
     def task_done(self) -> None:
-        self._queue.task_done()
+        pass

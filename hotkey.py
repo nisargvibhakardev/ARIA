@@ -35,6 +35,7 @@ class HotkeyListener:
         self._listener: keyboard.Listener | None = None
 
     def _on_activate(self) -> None:
+        print("[ARIA] hotkey pressed!", flush=True)
         self._queue.put_nowait(Event(type=EventType.HOTKEY_PRESSED, data={}))
 
     def start(self) -> None:
